@@ -244,7 +244,7 @@ def delete_credit_card(request, card_id):
 
 # ── Public landing ─────────────────────────────────────────────────────────────
 
-def custom_404(request, exception=None):
+def custom_404(request, exception=None, **kwargs):
     return render(request, "404.html", status=404)
 
 
