@@ -122,11 +122,26 @@ def delete_person(request, pk):
 
 # ── Debt ───────────────────────────────────────────────────────────────────────
 
+def _parse_payment_method(post_data):
+    data = post_data.copy()
+    pm = data.pop("payment_method", [""])[0]
+    if pm.startswith("card:"):
+        data["credit_card"] = pm[5:]
+        data["method"] = ""
+    elif pm in ("PIX", "CASH"):
+        data["credit_card"] = ""
+        data["method"] = pm
+    else:
+        data["credit_card"] = ""
+        data["method"] = ""
+    return data
+
+
 @login_required
 @require_POST
 def add_debt(request, pk):
     person = get_object_or_404(Person, pk=pk, user=request.user)
-    form = DebtForm(request.POST, user=request.user)
+    form = DebtForm(_parse_payment_method(request.POST), user=request.user)
     if form.is_valid():
         debt = form.save(commit=False)
         debt.person = person
@@ -139,7 +154,7 @@ def edit_debt(request, pk, debt_id):
     person = get_object_or_404(Person, pk=pk, user=request.user)
     debt = get_object_or_404(Debt, pk=debt_id, person=person)
     if request.method == "POST":
-        form = DebtForm(request.POST, instance=debt, user=request.user)
+        form = DebtForm(_parse_payment_method(request.POST), instance=debt, user=request.user)
         if form.is_valid():
             form.save()
             return redirect("person_detail", pk=pk)
