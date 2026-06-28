@@ -4,9 +4,11 @@
 
 {% block body %}
 <header class="bg-white dark:bg-zinc-950 border-b border-zinc-400 dark:border-zinc-800 px-6 py-3 flex items-center justify-between">
-  <a href="/">
+  {% if request.path == '/' %}
     <span class="text-sm tracking-widest uppercase text-zinc-900 dark:text-white">Debt Tracker</span>
-  </a>
+  {% else %}
+    <a href="/" class="text-sm tracking-widest uppercase text-zinc-900 dark:text-white hover:opacity-60 transition-opacity">Debt Tracker</a>
+  {% endif %}
   <div class="flex items-center gap-4 sm:gap-6">
     <button id="theme-toggle"
       class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
