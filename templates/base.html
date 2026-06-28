@@ -72,12 +72,24 @@
       if (e.target._errEl && e.target.validity.valid) e.target._errEl.textContent = '';
     }, true);
 
+    function resetForm(form) {
+      if (!form) return;
+      form.reset();
+      form.querySelectorAll('.field-error').forEach(el => el.textContent = '');
+    }
+
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
       document.querySelectorAll('[data-edit-cancel]').forEach(btn => {
-        if (!btn.closest('.hidden')) btn.click();
+        if (!btn.closest('.hidden')) {
+          resetForm(btn.closest('form'));
+          btn.click();
+        }
       });
-      document.querySelectorAll('details[open]').forEach(el => el.removeAttribute('open'));
+      document.querySelectorAll('details[open]').forEach(el => {
+        el.querySelectorAll('form').forEach(resetForm);
+        el.removeAttribute('open');
+      });
     });
   </script>
 </body>
