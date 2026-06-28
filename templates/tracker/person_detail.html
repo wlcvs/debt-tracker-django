@@ -59,10 +59,10 @@
     <p class="text-xs tracking-[0.25em] uppercase text-zinc-400 dark:text-zinc-500">Dívidas</p>
 
     {% if debts %}
-      <ul class="flex flex-col">
+      <ul class="flex flex-col gap-2">
         {% for debt in debts %}
           {# Display view #}
-          <li id="view-debt-{{ debt.pk }}" class="py-2 border-b border-zinc-200 dark:border-zinc-800">
+          <li id="view-debt-{{ debt.pk }}" class="px-3 py-2 border border-zinc-200 dark:border-zinc-800">
             <div class="flex justify-between items-start text-xs gap-2">
               <div class="min-w-0">
                 <div class="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
@@ -100,7 +100,7 @@
           </li>
 
           {# Edit form (hidden) #}
-          <li id="edit-debt-{{ debt.pk }}" class="hidden flex flex-col gap-1 py-2 border-b border-zinc-200 dark:border-zinc-800">
+          <li id="edit-debt-{{ debt.pk }}" class="hidden flex flex-col gap-1 px-3 py-2 border border-zinc-200 dark:border-zinc-800">
             <form method="post" action="{% url 'edit_debt' person.pk debt.pk %}" class="flex flex-col gap-1">
               {% csrf_token %}
               <input type="text" name="description" value="{{ debt.description }}" required
@@ -170,10 +170,10 @@
     <p class="text-xs tracking-[0.25em] uppercase text-zinc-400 dark:text-zinc-500">Pagamentos</p>
 
     {% if payments %}
-      <ul class="flex flex-col">
+      <ul class="flex flex-col gap-2">
         {% for payment in payments %}
           {# Display view #}
-          <li id="view-payment-{{ payment.pk }}" class="py-2 border-b border-zinc-200 dark:border-zinc-800">
+          <li id="view-payment-{{ payment.pk }}" class="px-3 py-2 border border-zinc-200 dark:border-zinc-800">
             <div class="flex justify-between items-center text-xs text-zinc-600 dark:text-zinc-300">
               <div>
                 <span class="text-zinc-500 dark:text-zinc-400">{{ payment.date }}</span>
@@ -204,7 +204,7 @@
           </li>
 
           {# Edit form (hidden) #}
-          <li id="edit-payment-{{ payment.pk }}" class="hidden flex flex-col gap-1 py-2 border-b border-zinc-200 dark:border-zinc-800">
+          <li id="edit-payment-{{ payment.pk }}" class="hidden flex flex-col gap-1 px-3 py-2 border border-zinc-200 dark:border-zinc-800">
             <form method="post" action="{% url 'edit_payment' person.pk payment.pk %}" class="flex flex-col gap-1">
               {% csrf_token %}
               <div class="flex gap-2">
