@@ -27,7 +27,7 @@
         class="text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
         Salvar
       </button>
-      <button type="button" onclick="toggleNameEdit()"
+      <button type="button" data-edit-cancel onclick="toggleNameEdit()"
         class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors cursor-pointer">
         Cancelar
       </button>
@@ -117,7 +117,7 @@
                   class="text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
                   Salvar
                 </button>
-                <button type="button" onclick="cancelDebt({{ debt.pk }})"
+                <button type="button" data-edit-cancel onclick="cancelDebt({{ debt.pk }})"
                   class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors cursor-pointer">
                   Cancelar
                 </button>
@@ -224,7 +224,7 @@
                   class="text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
                   Salvar
                 </button>
-                <button type="button" onclick="cancelPayment({{ payment.pk }})"
+                <button type="button" data-edit-cancel onclick="cancelPayment({{ payment.pk }})"
                   class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors cursor-pointer">
                   Cancelar
                 </button>
