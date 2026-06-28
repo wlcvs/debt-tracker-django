@@ -33,8 +33,25 @@
   </style>
 </head>
 <body class="{% block body_class %}{% endblock %}">
+  {% block theme_toggle %}
+  <button id="theme-toggle"
+    class="fixed top-4 right-5 text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer z-10">
+  </button>
+  {% endblock %}
   {% block body %}{% endblock %}
   <script>
+    // Theme toggle
+    const themeBtn = document.getElementById('theme-toggle');
+    if (themeBtn) {
+      themeBtn.textContent = document.documentElement.classList.contains('dark') ? 'Tema claro' : 'Tema escuro';
+      themeBtn.addEventListener('click', () => {
+        const isDark = document.documentElement.classList.contains('dark');
+        document.documentElement.classList.toggle('dark', !isDark);
+        localStorage.setItem('theme', isDark ? 'light' : 'dark');
+        themeBtn.textContent = !isDark ? 'Tema claro' : 'Tema escuro';
+      });
+    }
+
     // Custom form validation — replaces browser native bubbles
     document.addEventListener('invalid', (e) => {
       e.preventDefault();

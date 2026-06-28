@@ -24,4 +24,6 @@ urlpatterns = [
 
     path("public/", views.public_landing, name="public_landing"),
     path("public/<uuid:pk>/", views.public_view, name="public_view"),
+
+    path("<path:unknown>/", views.custom_404),
 ]

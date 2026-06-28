@@ -2,6 +2,8 @@
 
 {% block body_class %}min-h-screen bg-[#f0f0f4] dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100{% endblock %}
 
+{% block theme_toggle %}{% endblock %}
+
 {% block body %}
 <header class="bg-white dark:bg-zinc-950 border-b border-zinc-400 dark:border-zinc-800 px-6 py-3 flex items-center justify-between">
   {% if request.path == '/' %}
@@ -68,16 +70,6 @@
 </div>
 
 <script>
-  // Theme toggle
-  const themeBtn = document.getElementById('theme-toggle');
-  themeBtn.textContent = document.documentElement.classList.contains('dark') ? 'Tema claro' : 'Tema escuro';
-  themeBtn.addEventListener('click', () => {
-    const isDark = document.documentElement.classList.contains('dark');
-    document.documentElement.classList.toggle('dark', !isDark);
-    localStorage.setItem('theme', isDark ? 'light' : 'dark');
-    themeBtn.textContent = !isDark ? 'Tema claro' : 'Tema escuro';
-  });
-
   // Delete modal
   function openModal(title, desc, action, blocked) {
     document.getElementById('modal-title').textContent = title;
