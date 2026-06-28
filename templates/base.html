@@ -82,9 +82,9 @@
       form.querySelectorAll('.field-error').forEach(el => el.remove());
     }
 
-    // Reset forms when <details> closes (summary click or Escape)
+    // Reset forms when <details> opens so the form is always clean
     document.addEventListener('toggle', (e) => {
-      if (e.target.tagName !== 'DETAILS' || e.target.open) return;
+      if (e.target.tagName !== 'DETAILS' || !e.target.open) return;
       e.target.querySelectorAll('form').forEach(resetForm);
     }, true);
 
