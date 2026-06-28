@@ -74,10 +74,19 @@
 
     function resetForm(form) {
       if (!form) return;
-      form.querySelectorAll('input, textarea').forEach(el => { el.value = ''; });
+      form.querySelectorAll('input, textarea').forEach(el => {
+        el.value = '';
+        if (el._errEl) { el._errEl.remove(); el._errEl = null; }
+      });
       form.querySelectorAll('select').forEach(sel => { sel.selectedIndex = 0; });
-      form.querySelectorAll('.field-error').forEach(el => el.textContent = '');
+      form.querySelectorAll('.field-error').forEach(el => el.remove());
     }
+
+    // Reset forms when <details> closes (summary click or Escape)
+    document.addEventListener('toggle', (e) => {
+      if (e.target.tagName !== 'DETAILS' || e.target.open) return;
+      e.target.querySelectorAll('form').forEach(resetForm);
+    }, true);
 
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
@@ -88,7 +97,6 @@
         }
       });
       document.querySelectorAll('details[open]').forEach(el => {
-        el.querySelectorAll('form').forEach(resetForm);
         el.removeAttribute('open');
       });
     });
