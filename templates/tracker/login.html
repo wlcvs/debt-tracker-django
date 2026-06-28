@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Entrar — Debt Tracker{% endblock %}
+
+{% block content %}
+<div class="min-h-[70vh] flex items-center justify-center">
+  <div class="w-full max-w-sm">
+    <h1 class="text-2xl font-bold tracking-tight mb-8 uppercase">Entrar</h1>
+
+    <form method="post" class="space-y-4">
+      {% csrf_token %}
+
+      {% if form.non_field_errors %}
+        <div class="border border-current/40 px-4 py-2 text-sm">
+          {{ form.non_field_errors }}
+        </div>
+      {% endif %}
+
+      <div class="space-y-1">
+        <label for="{{ form.username.id_for_label }}" class="text-xs uppercase tracking-widest opacity-60">
+          Usuário
+        </label>
+        <input
+          type="text"
+          name="{{ form.username.html_name }}"
+          id="{{ form.username.id_for_label }}"
+          autofocus
+          class="w-full bg-transparent border border-current/30 px-3 py-2 text-sm focus:outline-none focus:border-current"
+        />
+      </div>
+
+      <div class="space-y-1">
+        <label for="{{ form.password.id_for_label }}" class="text-xs uppercase tracking-widest opacity-60">
+          Senha
+        </label>
+        <input
+          type="password"
+          name="{{ form.password.html_name }}"
+          id="{{ form.password.id_for_label }}"
+          class="w-full bg-transparent border border-current/30 px-3 py-2 text-sm focus:outline-none focus:border-current"
+        />
+      </div>
+
+      <button
+        type="submit"
+        class="w-full border border-current px-4 py-2 text-sm uppercase tracking-widest hover:bg-current hover:text-[var(--bg)] transition-colors"
+      >
+        Entrar
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}
