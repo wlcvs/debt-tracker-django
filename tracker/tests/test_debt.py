@@ -4,7 +4,7 @@ from datetime import date
 
 @pytest.mark.django_db
 def test_add_debt(auth_client, person):
-    response = auth_client.post(f"/person/{person.pk}/debt/add/", {
+    response = auth_client.post(f"/dashboard/person/{person.pk}/debt/add/", {
         "amount": "150.00",
         "description": "Aluguel",
         "date": date.today().isoformat(),
@@ -15,7 +15,7 @@ def test_add_debt(auth_client, person):
 
 @pytest.mark.django_db
 def test_edit_debt(auth_client, person, debt):
-    auth_client.post(f"/person/{person.pk}/debt/{debt.pk}/edit/", {
+    auth_client.post(f"/dashboard/person/{person.pk}/debt/{debt.pk}/edit/", {
         "amount": "200.00",
         "description": "Editado",
         "date": date.today().isoformat(),
@@ -28,14 +28,14 @@ def test_edit_debt(auth_client, person, debt):
 @pytest.mark.django_db
 def test_delete_debt(auth_client, person, debt):
     pk = debt.pk
-    auth_client.post(f"/person/{person.pk}/debt/{pk}/delete/")
+    auth_client.post(f"/dashboard/person/{person.pk}/debt/{pk}/delete/")
     from tracker.models import Debt
     assert not Debt.objects.filter(pk=pk).exists()
 
 
 @pytest.mark.django_db
 def test_debt_requires_description(auth_client, person):
-    response = auth_client.post(f"/person/{person.pk}/debt/add/", {
+    response = auth_client.post(f"/dashboard/person/{person.pk}/debt/add/", {
         "amount": "100.00",
         "description": "",
         "date": date.today().isoformat(),

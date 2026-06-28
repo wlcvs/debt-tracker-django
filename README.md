@@ -78,3 +78,17 @@ Payment    — amount (Decimal), date, method (PIX|CASH, required)
 ```
 
 Balances are always computed at runtime — no derived data is persisted.
+
+## Routes
+
+| Path | Description |
+|---|---|
+| `/` | Redirects to `/public/` |
+| `/login/` | Admin login (redirects to `/dashboard/` if already logged in) |
+| `/public/` | Debtor landing — enter UUID access code |
+| `/public/<uuid>/` | Read-only public view for a debtor |
+| `/dashboard/` | Admin dashboard |
+| `/dashboard/person/<uuid>/` | Person detail |
+| `/dashboard/person/…/debt/…` | Debt CRUD |
+| `/dashboard/person/…/payment/…` | Payment CRUD |
+| `/dashboard/credit-card/…` | Credit card CRUD |

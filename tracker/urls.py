@@ -1,11 +1,8 @@
-from django.urls import path
+from django.urls import include, path
 from . import views
 
-urlpatterns = [
-    path("", views.home_redirect, name="home"),
-    path("dashboard/", views.dashboard, name="dashboard"),
-    path("login/", views.AppLoginView.as_view(), name="login"),
-    path("logout/", views.logout_view, name="logout"),
+dashboard_patterns = [
+    path("", views.dashboard, name="dashboard"),
 
     path("person/<uuid:pk>/", views.person_detail, name="person_detail"),
     path("person/<uuid:pk>/edit/", views.edit_person, name="edit_person"),
@@ -22,6 +19,13 @@ urlpatterns = [
     path("credit-card/add/", views.add_credit_card, name="add_credit_card"),
     path("credit-card/<int:card_id>/edit/", views.edit_credit_card, name="edit_credit_card"),
     path("credit-card/<int:card_id>/delete/", views.delete_credit_card, name="delete_credit_card"),
+]
+
+urlpatterns = [
+    path("", views.home_redirect, name="home"),
+    path("dashboard/", include(dashboard_patterns)),
+    path("login/", views.AppLoginView.as_view(), name="login"),
+    path("logout/", views.logout_view, name="logout"),
 
     path("public/", views.public_landing, name="public_landing"),
     path("public/<uuid:pk>/", views.public_view, name="public_view"),

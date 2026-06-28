@@ -1,12 +1,12 @@
 from decimal import Decimal
 
-from django.contrib import messages
 from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView
 from django.db.models import Sum
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from .forms import CreditCardForm, DebtForm, PaymentForm, PersonForm
@@ -148,7 +148,7 @@ def edit_debt(request, pk, debt_id):
     return render(request, "tracker/edit_form.html", {
         "form": form,
         "title": "Editar dívida",
-        "back_url": f"/person/{pk}/",
+        "back_url": reverse("person_detail", kwargs={"pk": pk}),
     })
 
 
@@ -189,7 +189,7 @@ def edit_payment(request, pk, payment_id):
     return render(request, "tracker/edit_form.html", {
         "form": form,
         "title": "Editar pagamento",
-        "back_url": f"/person/{pk}/",
+        "back_url": reverse("person_detail", kwargs={"pk": pk}),
     })
 
 
@@ -228,7 +228,7 @@ def edit_credit_card(request, card_id):
     return render(request, "tracker/edit_form.html", {
         "form": form,
         "title": "Editar cartão",
-        "back_url": "/dashboard/",
+        "back_url": reverse("dashboard"),
     })
 
 
@@ -249,8 +249,6 @@ def custom_404(request, exception=None, **kwargs):
 
 
 def home_redirect(request):
-    if request.user.is_authenticated:
-        return redirect("dashboard")
     return redirect("public_landing")
 
 

@@ -4,7 +4,7 @@ from datetime import date
 
 @pytest.mark.django_db
 def test_add_payment(auth_client, person):
-    response = auth_client.post(f"/person/{person.pk}/payment/add/", {
+    response = auth_client.post(f"/dashboard/person/{person.pk}/payment/add/", {
         "amount": "75.00",
         "date": date.today().isoformat(),
         "method": "PIX",
@@ -15,7 +15,7 @@ def test_add_payment(auth_client, person):
 
 @pytest.mark.django_db
 def test_edit_payment(auth_client, person, payment):
-    auth_client.post(f"/person/{person.pk}/payment/{payment.pk}/edit/", {
+    auth_client.post(f"/dashboard/person/{person.pk}/payment/{payment.pk}/edit/", {
         "amount": "99.00",
         "date": date.today().isoformat(),
         "method": "CASH",
@@ -28,14 +28,14 @@ def test_edit_payment(auth_client, person, payment):
 @pytest.mark.django_db
 def test_delete_payment(auth_client, person, payment):
     pk = payment.pk
-    auth_client.post(f"/person/{person.pk}/payment/{pk}/delete/")
+    auth_client.post(f"/dashboard/person/{person.pk}/payment/{pk}/delete/")
     from tracker.models import Payment
     assert not Payment.objects.filter(pk=pk).exists()
 
 
 @pytest.mark.django_db
 def test_payment_requires_method(auth_client, person):
-    response = auth_client.post(f"/person/{person.pk}/payment/add/", {
+    response = auth_client.post(f"/dashboard/person/{person.pk}/payment/add/", {
         "amount": "50.00",
         "date": date.today().isoformat(),
         "method": "",

@@ -45,7 +45,7 @@ pytest
 debt_tracker/         # Django config (settings, urls, wsgi)
 tracker/              # Main app
   models.py           # Person, CreditCard, Debt, Payment
-  views.py            # dashboard, person_detail, public_view, login
+  views.py
   urls.py
   forms.py
   templates/tracker/
@@ -53,6 +53,24 @@ tracker/              # Main app
 manage.py
 requirements.txt
 docker-compose.yml
+```
+
+## URL structure
+
+```
+/                          → redirects to /public/
+/login/                    → login (redirects to /dashboard/ if already logged in)
+/logout/
+/public/                   → debtor access: enter UUID code
+/public/<uuid>/            → read-only public view for a debtor
+/dashboard/                → admin dashboard
+/dashboard/person/<uuid>/  → person detail
+/dashboard/person/<uuid>/edit|delete/
+/dashboard/person/<uuid>/debt/add/
+/dashboard/person/<uuid>/debt/<id>/edit|delete/
+/dashboard/person/<uuid>/payment/add/
+/dashboard/person/<uuid>/payment/<id>/edit|delete/
+/dashboard/credit-card/add|edit|delete/
 ```
 
 ## Models
