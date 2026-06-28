@@ -88,10 +88,15 @@
     document.getElementById('modal-blocked-btns').classList.toggle('hidden', !blocked_);
     document.getElementById('modal-overlay').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
+    document.querySelector('header').inert = true;
+    document.querySelector('main').inert = true;
+    document.querySelector('#modal-overlay button:not([class*="hidden"])').focus();
   }
   function closeModal() {
     document.getElementById('modal-overlay').classList.add('hidden');
     document.body.style.overflow = '';
+    document.querySelector('header').inert = false;
+    document.querySelector('main').inert = false;
   }
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
 </script>
