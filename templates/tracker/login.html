@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Entrar — Debt Tracker{% endblock %}
+{% block theme_toggle %}{% endblock %}
 
 {% block body_class %}min-h-screen bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100{% endblock %}
 
@@ -49,14 +50,4 @@
   </div>
 </main>
 
-<script>
-  const btn = document.getElementById('theme-toggle');
-  btn.textContent = document.documentElement.classList.contains('dark') ? 'Tema claro' : 'Tema escuro';
-  btn.addEventListener('click', () => {
-    const isDark = document.documentElement.classList.contains('dark');
-    document.documentElement.classList.toggle('dark', !isDark);
-    localStorage.setItem('theme', isDark ? 'light' : 'dark');
-    btn.textContent = !isDark ? 'Tema claro' : 'Tema escuro';
-  });
-</script>
 {% endblock %}
