@@ -233,6 +233,9 @@ def edit_credit_card(request, card_id):
 @require_POST
 def delete_credit_card(request, card_id):
     card = get_object_or_404(CreditCard, pk=card_id, user=request.user)
+    if card.debts.exists():
+        messages.error(request, f'O cartão "{card.label}" não pode ser excluído pois possui dívidas vinculadas.')
+        return redirect("dashboard")
     card.delete()
     return redirect("dashboard")
 

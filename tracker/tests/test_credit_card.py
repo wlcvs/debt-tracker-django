@@ -16,7 +16,7 @@ def test_edit_credit_card(auth_client, credit_card):
 
 
 @pytest.mark.django_db
-def test_delete_credit_card(auth_client, credit_card):
+def test_delete_credit_card_without_debts(auth_client, credit_card):
     pk = credit_card.pk
     auth_client.post(f"/credit-card/{pk}/delete/")
     from tracker.models import CreditCard
@@ -24,12 +24,13 @@ def test_delete_credit_card(auth_client, credit_card):
 
 
 @pytest.mark.django_db
-def test_delete_card_nullifies_debt(auth_client, credit_card, debt):
+def test_delete_credit_card_with_debts_is_blocked(auth_client, credit_card, debt):
     debt.credit_card = credit_card
     debt.save()
-    auth_client.post(f"/credit-card/{credit_card.pk}/delete/")
-    debt.refresh_from_db()
-    assert debt.credit_card is None
+    pk = credit_card.pk
+    auth_client.post(f"/credit-card/{pk}/delete/")
+    from tracker.models import CreditCard
+    assert CreditCard.objects.filter(pk=pk).exists()
 
 
 @pytest.mark.django_db

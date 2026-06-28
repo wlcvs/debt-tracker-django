@@ -69,19 +69,23 @@
         <p class="text-xs text-zinc-400 dark:text-zinc-600 mb-4">Nenhum devedor cadastrado.</p>
       {% endif %}
 
-      <form method="post" class="flex gap-2">
+      <form method="post" class="flex flex-col gap-1">
         {% csrf_token %}
-        <input
-          type="text"
-          name="name"
-          placeholder="NOME"
-          required
-          class="flex-1 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors"
-        />
-        <button type="submit"
-          class="border border-zinc-400 dark:border-zinc-600 px-4 py-2 text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer whitespace-nowrap">
-          Adicionar
-        </button>
+        <div class="flex gap-2 items-start">
+          <div class="flex-1">
+            <input
+              type="text"
+              name="name"
+              placeholder="NOME"
+              required
+              class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors"
+            />
+          </div>
+          <button type="submit"
+            class="border border-zinc-400 dark:border-zinc-600 px-4 py-2 text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer whitespace-nowrap">
+            Adicionar
+          </button>
+        </div>
       </form>
     </section>
 
@@ -132,19 +136,23 @@
         <p class="text-xs text-zinc-400 dark:text-zinc-600 mb-4">Nenhum cartão cadastrado.</p>
       {% endif %}
 
-      <form method="post" action="{% url 'add_credit_card' %}" class="flex gap-2">
+      <form method="post" action="{% url 'add_credit_card' %}" class="flex flex-col gap-1">
         {% csrf_token %}
-        <input
-          type="text"
-          name="label"
-          placeholder="NOME DO CARTÃO"
-          required
-          class="flex-1 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors"
-        />
-        <button type="submit"
-          class="border border-zinc-400 dark:border-zinc-600 px-4 py-2 text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer whitespace-nowrap">
-          Adicionar
-        </button>
+        <div class="flex gap-2 items-start">
+          <div class="flex-1">
+            <input
+              type="text"
+              name="label"
+              placeholder="NOME DO CARTÃO"
+              required
+              class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors"
+            />
+          </div>
+          <button type="submit"
+            class="border border-zinc-400 dark:border-zinc-600 px-4 py-2 text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer whitespace-nowrap">
+            Adicionar
+          </button>
+        </div>
       </form>
     </section>
 
