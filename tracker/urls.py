@@ -22,5 +22,6 @@ urlpatterns = [
     path("credit-card/<int:card_id>/edit/", views.edit_credit_card, name="edit_credit_card"),
     path("credit-card/<int:card_id>/delete/", views.delete_credit_card, name="delete_credit_card"),
 
+    path("public/", views.public_landing, name="public_landing"),
     path("public/<uuid:pk>/", views.public_view, name="public_view"),
 ]

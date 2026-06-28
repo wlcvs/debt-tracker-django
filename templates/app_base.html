@@ -90,7 +90,8 @@
     document.body.style.overflow = 'hidden';
     document.querySelector('header').inert = true;
     document.querySelector('main').inert = true;
-    document.querySelector('#modal-overlay button:not([class*="hidden"])').focus();
+    const modalBtns = [...document.querySelectorAll('#modal-overlay button')].filter(b => !b.closest('.hidden'));
+    if (modalBtns[0]) modalBtns[0].focus();
   }
   function closeModal() {
     document.getElementById('modal-overlay').classList.add('hidden');

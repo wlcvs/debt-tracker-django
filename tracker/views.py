@@ -242,6 +242,24 @@ def delete_credit_card(request, card_id):
     return redirect("dashboard")
 
 
+# ── Public landing ─────────────────────────────────────────────────────────────
+
+def custom_404(request, exception=None):
+    return render(request, "404.html", status=404)
+
+
+def public_landing(request):
+    error = False
+    if request.method == "POST":
+        code = request.POST.get("code", "").strip()
+        try:
+            person = Person.objects.get(pk=code)
+            return redirect("public_view", pk=person.pk)
+        except (Person.DoesNotExist, ValueError):
+            error = True
+    return render(request, "tracker/public_landing.html", {"error": error})
+
+
 # ── Public view ────────────────────────────────────────────────────────────────
 
 def public_view(request, pk):
