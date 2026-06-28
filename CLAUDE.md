@@ -1,49 +1,49 @@
 # CLAUDE.md
 
-## Contexto
+## Context
 
-Reescrita do [debt-tracker](https://github.com/wlcvs/debt-tracker) (Next.js) em Django.
-O plano de trabalho completo está no **GitHub Project** deste repositório — abra lá para ver o estado atual antes de começar qualquer sessão.
+Django rewrite of [debt-tracker](https://github.com/wlcvs/debt-tracker) (Next.js).
+Check the **GitHub Project** tab on this repository before starting any session to see the current work state.
 
-## O que o app faz
+## What the app does
 
-Rastreador pessoal de dívidas. O admin (Wallacy) cadastra devedores e registra dívidas e pagamentos. Cada devedor tem um `id` que serve como código de acesso para uma view pública read-only em `/public/<id>/`.
+Personal debt tracker. The admin (Wallacy) registers debtors and records debts and payments. Each debtor has a UUID `id` that serves as an access code for a read-only public view at `/public/<id>/`.
 
 ## Stack
 
-| Camada | Tecnologia |
+| Layer | Technology |
 |---|---|
 | Framework | Django 5 (Python 3.12+) |
-| Banco | PostgreSQL — Docker localmente / Neon em produção |
+| Database | PostgreSQL — Docker locally / Neon in production |
 | Auth | Django built-in (session + `django.contrib.auth`) |
-| Estilos | Tailwind CSS 4 (via CDN ou Vite) |
+| Styles | Tailwind CSS 4 (via CDN) |
 | Templates | Django templates |
-| Testes | pytest + pytest-django |
+| Tests | pytest + pytest-django |
 
-## Comandos
+## Commands
 
 ```bash
-# Ambiente virtual
+# Virtual environment
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
 # DB
 docker compose up -d
 python manage.py migrate
-python manage.py createsuperuser   # ou: python manage.py seed
+python manage.py seed   # creates superuser from ADMIN_EMAIL / ADMIN_PASSWORD in .env
 
 # Dev
 python manage.py runserver
 
-# Testes
+# Tests
 pytest
 ```
 
-## Estrutura do projeto
+## Project structure
 
 ```
-debt_tracker/         # config Django (settings, urls, wsgi)
-tracker/              # app principal
+debt_tracker/         # Django config (settings, urls, wsgi)
+tracker/              # Main app
   models.py           # Person, CreditCard, Debt, Payment
   views.py            # dashboard, person_detail, public_view, login
   urls.py
@@ -55,26 +55,27 @@ requirements.txt
 docker-compose.yml
 ```
 
-## Modelos (equivalentes ao Prisma original)
+## Models
 
 ```
-User       — Django built-in (AbstractUser ou default User)
-Person     — id (UUID, serve como access code), name, user FK
+User       — Django built-in
+Person     — id (UUID, serves as access code), name, user FK
 CreditCard — label, user FK
-Debt       — amount (Decimal 10,2), description, date, credit_card FK?, method (PIX|CASH)?
-Payment    — amount (Decimal 10,2), date, method (PIX|CASH)
+Debt       — amount (Decimal 10,2), description, date, credit_card FK (nullable), method (PIX|CASH, optional)
+Payment    — amount (Decimal 10,2), date, method (PIX|CASH, required)
 ```
 
-## Regras
+## Rules
 
-- **Nunca persistir dados derivados** — saldos sempre calculados em runtime.
-- **`method` em Debt** é opcional (nem toda dívida é pix/dinheiro — pode ser no cartão).
-- **`method` em Payment** é PIX ou CASH, sempre obrigatório.
-- **Design:** HUD/monocromático (escala de cinza, sem cores de destaque). Fundo claro `#e8e8ed`. Toggle dark/light. **UI em pt-BR.**
-- **Commits:** Conventional Commits em inglês (`feat:`, `fix:`, `chore:`…).
-- **Simples** — app de admin único, sem overengineering.
+- **Never persist derived data** — balances are always computed at runtime.
+- **`method` on Debt** is optional (not every debt is PIX/CASH — it may be on a card).
+- **`method` on Payment** is PIX or CASH, always required.
+- **Credit cards with linked debts cannot be deleted.**
+- **Design:** HUD/monochromatic (grayscale, no accent colors). Light background `#f0f0f4`. Dark/light toggle. **UI in pt-BR.**
+- **Commits:** Conventional Commits in English (`feat:`, `fix:`, `chore:`…).
+- **Simple** — single-admin app, no overengineering.
 
-## Referências
+## References
 
-- Repositório original (Next.js): https://github.com/wlcvs/debt-tracker
-- GitHub Project (kanban do rewrite): veja a aba **Projects** neste repositório
+- Original repository (Next.js): https://github.com/wlcvs/debt-tracker
+- GitHub Project (rewrite kanban): see the **Projects** tab on this repository
