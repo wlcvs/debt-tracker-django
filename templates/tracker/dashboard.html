@@ -2,6 +2,81 @@
 {% block title %}Dashboard — Debt Tracker{% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-bold tracking-tight uppercase mb-6">Dashboard</h1>
-<p class="opacity-60 text-sm">Em construção.</p>
+
+{# ── Stats ── #}
+<div class="mb-10">
+  <p class="text-xs uppercase tracking-widest opacity-40 mb-1">Total a receber</p>
+  <p class="text-4xl font-bold tracking-tight">R$ {{ total|floatformat:2 }}</p>
+  <p class="text-xs opacity-40 mt-1">{{ people|length }} devedor{{ people|length|pluralize:",es" }}</p>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+
+  {# ── People ── #}
+  <section>
+    <h2 class="text-xs uppercase tracking-widest opacity-40 mb-4">Devedores</h2>
+
+    {% if people %}
+      <ul class="divide-y divide-current/10 mb-6">
+        {% for person in people %}
+          <li class="py-3 flex items-center justify-between">
+            <a href="{% url 'person_detail' person.pk %}" class="hover:opacity-60 transition-opacity">
+              {{ person.name }}
+            </a>
+            <span class="font-bold">R$ {{ person.balance|floatformat:2 }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="opacity-40 text-xs mb-6">Nenhum devedor cadastrado.</p>
+    {% endif %}
+
+    <form method="post" class="flex gap-2">
+      {% csrf_token %}
+      {{ form.name }}
+      <button type="submit"
+        class="border border-current px-4 py-2 text-xs uppercase tracking-widest hover:bg-current hover:text-[var(--bg)] transition-colors whitespace-nowrap">
+        Adicionar
+      </button>
+    </form>
+    {% if form.name.errors %}
+      <p class="text-xs opacity-60 mt-1">{{ form.name.errors.0 }}</p>
+    {% endif %}
+  </section>
+
+  {# ── Credit Cards ── #}
+  <section>
+    <h2 class="text-xs uppercase tracking-widest opacity-40 mb-4">Cartões de crédito</h2>
+
+    {% if credit_cards %}
+      <ul class="divide-y divide-current/10 mb-6">
+        {% for card in credit_cards %}
+          <li class="py-3 flex items-center justify-between gap-4">
+            <span>{{ card.label }}</span>
+            <div class="flex gap-3 text-xs uppercase tracking-widest">
+              <a href="{% url 'edit_credit_card' card.pk %}" class="opacity-60 hover:opacity-100">Editar</a>
+              <form method="post" action="{% url 'delete_credit_card' card.pk %}"
+                onsubmit="return confirm('Excluir cartão {{ card.label }}?')">
+                {% csrf_token %}
+                <button type="submit" class="opacity-60 hover:opacity-100">Excluir</button>
+              </form>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="opacity-40 text-xs mb-6">Nenhum cartão cadastrado.</p>
+    {% endif %}
+
+    <form method="post" action="{% url 'add_credit_card' %}" class="flex gap-2">
+      {% csrf_token %}
+      {{ card_form.label }}
+      <button type="submit"
+        class="border border-current px-4 py-2 text-xs uppercase tracking-widest hover:bg-current hover:text-[var(--bg)] transition-colors whitespace-nowrap">
+        Adicionar
+      </button>
+    </form>
+  </section>
+
+</div>
 {% endblock %}

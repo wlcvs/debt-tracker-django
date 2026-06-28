@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% block title %}{{ person.name }} — Debt Tracker{% endblock %}
+
+{% block content %}
+
+{# ── Header ── #}
+<div class="mb-8 flex items-start justify-between gap-4 flex-wrap">
+  <div>
+    <a href="/" class="text-xs uppercase tracking-widest opacity-40 hover:opacity-100 mb-2 block">← Dashboard</a>
+    <h1 class="text-3xl font-bold tracking-tight">{{ person.name }}</h1>
+  </div>
+  <div class="flex gap-3 text-xs uppercase tracking-widest mt-6">
+    <button onclick="document.getElementById('edit-person-form').classList.toggle('hidden')"
+      class="border border-current/40 px-3 py-1 hover:border-current transition-colors">
+      Editar nome
+    </button>
+    <form method="post" action="{% url 'delete_person' person.pk %}"
+      onsubmit="return confirm('Excluir {{ person.name }} e todos os dados? Esta ação é irreversível.')">
+      {% csrf_token %}
+      <button type="submit" class="border border-current/40 px-3 py-1 hover:border-current transition-colors">
+        Excluir
+      </button>
+    </form>
+    <button onclick="navigator.clipboard.writeText('{{ request.scheme }}://{{ request.get_host }}/public/{{ person.pk }}/')"
+      class="border border-current/40 px-3 py-1 hover:border-current transition-colors">
+      Copiar link público
+    </button>
+  </div>
+</div>
+
+{# ── Edit person form (hidden) ── #}
+<form id="edit-person-form" method="post" action="{% url 'edit_person' person.pk %}"
+  class="hidden mb-8 flex gap-2 max-w-sm">
+  {% csrf_token %}
+  {{ person_form.name }}
+  <button type="submit"
+    class="border border-current px-4 py-2 text-xs uppercase tracking-widest hover:bg-current hover:text-[var(--bg)] transition-colors whitespace-nowrap">
+    Salvar
+  </button>
+</form>
+
+{# ── Balance ── #}
+<div class="grid grid-cols-3 gap-4 mb-10">
+  <div class="border border-current/20 p-4">
+    <p class="text-xs uppercase tracking-widest opacity-40 mb-1">Dívida total</p>
+    <p class="text-xl font-bold">R$ {{ total_debt|floatformat:2 }}</p>
+  </div>
+  <div class="border border-current/20 p-4">
+    <p class="text-xs uppercase tracking-widest opacity-40 mb-1">Total pago</p>
+    <p class="text-xl font-bold">R$ {{ total_paid|floatformat:2 }}</p>
+  </div>
+  <div class="border border-current/20 p-4">
+    <p class="text-xs uppercase tracking-widest opacity-40 mb-1">Saldo</p>
+    <p class="text-xl font-bold">R$ {{ balance|floatformat:2 }}</p>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+
+  {# ── Debts ── #}
+  <section>
+    <h2 class="text-xs uppercase tracking-widest opacity-40 mb-4">Dívidas</h2>
+
+    {% if debts %}
+      <ul class="divide-y divide-current/10 mb-6">
+        {% for debt in debts %}
+          <li class="py-3">
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <p class="font-medium">{{ debt.description }}</p>
+                <p class="text-xs opacity-40 mt-0.5">
+                  {{ debt.date }}
+                  {% if debt.credit_card %} · {{ debt.credit_card.label }}{% endif %}
+                  {% if debt.method %} · {{ debt.get_method_display }}{% endif %}
+                </p>
+              </div>
+              <div class="text-right shrink-0">
+                <p class="font-bold">R$ {{ debt.amount|floatformat:2 }}</p>
+                <div class="flex gap-2 text-xs uppercase tracking-widest mt-1">
+                  <a href="{% url 'edit_debt' person.pk debt.pk %}" class="opacity-60 hover:opacity-100">Editar</a>
+                  <form method="post" action="{% url 'delete_debt' person.pk debt.pk %}"
+                    onsubmit="return confirm('Excluir esta dívida?')">
+                    {% csrf_token %}
+                    <button type="submit" class="opacity-60 hover:opacity-100">Excluir</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="opacity-40 text-xs mb-6">Nenhuma dívida registrada.</p>
+    {% endif %}
+
+    {# Add debt form #}
+    <details class="border border-current/20">
+      <summary class="px-4 py-2 text-xs uppercase tracking-widest cursor-pointer hover:opacity-60">
+        + Adicionar dívida
+      </summary>
+      <form method="post" action="{% url 'add_debt' person.pk %}" class="p-4 space-y-3 border-t border-current/20">
+        {% csrf_token %}
+        <div>
+          <label class="block text-xs uppercase tracking-widest opacity-40 mb-1">Descrição</label>
+          {{ debt_form.description }}
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs uppercase tracking-widest opacity-40 mb-1">Valor (R$)</label>
+            {{ debt_form.amount }}
+          </div>
+          <div>
+            <label class="block text-xs uppercase tracking-widest opacity-40 mb-1">Data</label>
+            {{ debt_form.date }}
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs uppercase tracking-widest opacity-40 mb-1">Cartão</label>
+            {{ debt_form.credit_card }}
+          </div>
+          <div>
+            <label class="block text-xs uppercase tracking-widest opacity-40 mb-1">Método</label>
+            {{ debt_form.method }}
+          </div>
+        </div>
+        <button type="submit"
+          class="border border-current px-4 py-2 text-xs uppercase tracking-widest hover:bg-current hover:text-[var(--bg)] transition-colors">
+          Salvar
+        </button>
+      </form>
+    </details>
+  </section>
+
+  {# ── Payments ── #}
+  <section>
+    <h2 class="text-xs uppercase tracking-widest opacity-40 mb-4">Pagamentos</h2>
+
+    {% if payments %}
+      <ul class="divide-y divide-current/10 mb-6">
+        {% for payment in payments %}
+          <li class="py-3 flex items-start justify-between gap-2">
+            <div>
+              <p class="font-medium">{{ payment.get_method_display }}</p>
+              <p class="text-xs opacity-40 mt-0.5">{{ payment.date }}</p>
+            </div>
+            <div class="text-right shrink-0">
+              <p class="font-bold">R$ {{ payment.amount|floatformat:2 }}</p>
+              <div class="flex gap-2 text-xs uppercase tracking-widest mt-1">
+                <a href="{% url 'edit_payment' person.pk payment.pk %}" class="opacity-60 hover:opacity-100">Editar</a>
+                <form method="post" action="{% url 'delete_payment' person.pk payment.pk %}"
+                  onsubmit="return confirm('Excluir este pagamento?')">
+                  {% csrf_token %}
+                  <button type="submit" class="opacity-60 hover:opacity-100">Excluir</button>
+                </form>
+              </div>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="opacity-40 text-xs mb-6">Nenhum pagamento registrado.</p>
+    {% endif %}
+
+    {# Add payment form #}
+    <details class="border border-current/20">
+      <summary class="px-4 py-2 text-xs uppercase tracking-widest cursor-pointer hover:opacity-60">
+        + Adicionar pagamento
+      </summary>
+      <form method="post" action="{% url 'add_payment' person.pk %}" class="p-4 space-y-3 border-t border-current/20">
+        {% csrf_token %}
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs uppercase tracking-widest opacity-40 mb-1">Valor (R$)</label>
+            {{ payment_form.amount }}
+          </div>
+          <div>
+            <label class="block text-xs uppercase tracking-widest opacity-40 mb-1">Data</label>
+            {{ payment_form.date }}
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs uppercase tracking-widest opacity-40 mb-1">Método</label>
+          {{ payment_form.method }}
+        </div>
+        <button type="submit"
+          class="border border-current px-4 py-2 text-xs uppercase tracking-widest hover:bg-current hover:text-[var(--bg)] transition-colors">
+          Salvar
+        </button>
+      </form>
+    </details>
+  </section>
+
+</div>
+{% endblock %}
