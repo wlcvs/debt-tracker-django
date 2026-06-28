@@ -1,52 +1,61 @@
 {% extends "base.html" %}
 {% block title %}Entrar — Debt Tracker{% endblock %}
 
-{% block content %}
-<div class="min-h-[70vh] flex items-center justify-center">
-  <div class="w-full max-w-sm">
-    <h1 class="text-2xl font-bold tracking-tight mb-8 uppercase">Entrar</h1>
+{% block body_class %}min-h-screen bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100{% endblock %}
 
-    <form method="post" class="space-y-4">
+{% block body %}
+<main class="min-h-screen flex items-center justify-center px-4">
+  <div class="w-full max-w-sm">
+    <div class="mb-10 flex items-start justify-between">
+      <h1 class="text-2xl tracking-widest uppercase text-zinc-900 dark:text-white">
+        Debt Tracker
+      </h1>
+      <button id="theme-toggle"
+        class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer mt-1">
+        Tema
+      </button>
+    </div>
+
+    <form method="post" class="flex flex-col gap-4">
       {% csrf_token %}
 
       {% if form.non_field_errors %}
-        <div class="border border-current/40 px-4 py-2 text-sm">
-          {{ form.non_field_errors }}
-        </div>
+        <p class="text-xs tracking-wider border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-zinc-500">
+          {{ form.non_field_errors.0 }}
+        </p>
       {% endif %}
 
-      <div class="space-y-1">
-        <label for="{{ form.username.id_for_label }}" class="text-xs uppercase tracking-widest opacity-60">
-          E-mail
-        </label>
-        <input
-          type="email"
-          name="{{ form.username.html_name }}"
-          id="{{ form.username.id_for_label }}"
-          autofocus
-          class="w-full bg-transparent border border-current/30 px-3 py-2 text-sm focus:outline-none focus:border-current"
-        />
-      </div>
-
-      <div class="space-y-1">
-        <label for="{{ form.password.id_for_label }}" class="text-xs uppercase tracking-widest opacity-60">
-          Senha
-        </label>
-        <input
-          type="password"
-          name="{{ form.password.html_name }}"
-          id="{{ form.password.id_for_label }}"
-          class="w-full bg-transparent border border-current/30 px-3 py-2 text-sm focus:outline-none focus:border-current"
-        />
-      </div>
-
+      <input
+        type="email"
+        name="{{ form.username.html_name }}"
+        placeholder="E-MAIL"
+        autofocus
+        required
+        class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-4 py-3 text-sm tracking-widest text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors"
+      />
+      <input
+        type="password"
+        name="{{ form.password.html_name }}"
+        placeholder="SENHA"
+        required
+        class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-4 py-3 text-sm tracking-widest text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors"
+      />
       <button
         type="submit"
-        class="w-full border border-current px-4 py-2 text-sm uppercase tracking-widest hover:bg-current hover:text-[var(--bg)] transition-colors"
+        class="border border-zinc-400 dark:border-zinc-600 px-4 py-3 text-sm tracking-[0.2em] uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer mt-2"
       >
         Entrar
       </button>
     </form>
   </div>
-</div>
+</main>
+
+<script>
+  document.getElementById('theme-toggle').addEventListener('click', () => {
+    const html = document.documentElement;
+    const isDark = html.classList.contains('dark');
+    html.classList.toggle('dark', !isDark);
+    localStorage.setItem('theme', isDark ? 'light' : 'dark');
+  });
+</script>
 {% endblock %}

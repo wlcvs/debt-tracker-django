@@ -49,12 +49,27 @@ def dashboard(request):
     for p in people:
         p.balance = p.total_debt - p.total_paid
 
-    total = sum(p.balance for p in people)
+    total_to_receive = sum(p.balance for p in people)
+    active_debtors = sum(1 for p in people if p.balance > 0)
+
+    total_paid_sum = Payment.objects.filter(
+        person__user=request.user
+    ).aggregate(s=Coalesce(Sum("amount"), Decimal("0")))["s"]
+
+    stats = {
+        "total_to_receive": total_to_receive,
+        "active_debtors": active_debtors,
+        "total_debtors": len(people),
+        "total_debts": Debt.objects.filter(person__user=request.user).count(),
+        "total_payments": Payment.objects.filter(person__user=request.user).count(),
+        "total_paid": total_paid_sum,
+    }
+
     credit_cards = CreditCard.objects.filter(user=request.user).order_by("label")
 
     return render(request, "tracker/dashboard.html", {
         "people": people,
-        "total": total,
+        "stats": stats,
         "credit_cards": credit_cards,
         "form": form,
         "card_form": CreditCardForm(),

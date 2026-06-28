@@ -1,82 +1,150 @@
-{% extends "base.html" %}
+{% extends "app_base.html" %}
 {% block title %}Dashboard — Debt Tracker{% endblock %}
 
 {% block content %}
+<div class="flex flex-col gap-10">
 
-{# ── Stats ── #}
-<div class="mb-10">
-  <p class="text-xs uppercase tracking-widest opacity-40 mb-1">Total a receber</p>
-  <p class="text-4xl font-bold tracking-tight">R$ {{ total|floatformat:2 }}</p>
-  <p class="text-xs opacity-40 mt-1">{{ people|length }} devedor{{ people|length|pluralize:",es" }}</p>
-</div>
-
-<div class="grid grid-cols-1 md:grid-cols-2 gap-10">
-
-  {# ── People ── #}
+  {# ── Total a receber ── #}
   <section>
-    <h2 class="text-xs uppercase tracking-widest opacity-40 mb-4">Devedores</h2>
-
-    {% if people %}
-      <ul class="divide-y divide-current/10 mb-6">
-        {% for person in people %}
-          <li class="py-3 flex items-center justify-between">
-            <a href="{% url 'person_detail' person.pk %}" class="hover:opacity-60 transition-opacity">
-              {{ person.name }}
-            </a>
-            <span class="font-bold">R$ {{ person.balance|floatformat:2 }}</span>
-          </li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p class="opacity-40 text-xs mb-6">Nenhum devedor cadastrado.</p>
-    {% endif %}
-
-    <form method="post" class="flex gap-2">
-      {% csrf_token %}
-      {{ form.name }}
-      <button type="submit"
-        class="border border-current px-4 py-2 text-xs uppercase tracking-widest hover:bg-current hover:text-[var(--bg)] transition-colors whitespace-nowrap">
-        Adicionar
+    <div class="flex items-center gap-8 mb-3">
+      <p class="text-[10px] tracking-[0.3em] text-zinc-400 dark:text-zinc-500 uppercase">Total a receber</p>
+      <button id="toggle-total"
+        class="text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors cursor-pointer">
+        Esconder
       </button>
-    </form>
-    {% if form.name.errors %}
-      <p class="text-xs opacity-60 mt-1">{{ form.name.errors.0 }}</p>
-    {% endif %}
+    </div>
+    <p id="total-display" class="text-5xl tracking-tight text-zinc-900 dark:text-white">
+      R$ {{ stats.total_to_receive|floatformat:2 }}
+    </p>
+    <p id="total-hidden" class="text-5xl tracking-tight text-zinc-900 dark:text-white hidden">
+      R$ ••••••
+    </p>
   </section>
 
-  {# ── Credit Cards ── #}
-  <section>
-    <h2 class="text-xs uppercase tracking-widest opacity-40 mb-4">Cartões de crédito</h2>
-
-    {% if credit_cards %}
-      <ul class="divide-y divide-current/10 mb-6">
-        {% for card in credit_cards %}
-          <li class="py-3 flex items-center justify-between gap-4">
-            <span>{{ card.label }}</span>
-            <div class="flex gap-3 text-xs uppercase tracking-widest">
-              <a href="{% url 'edit_credit_card' card.pk %}" class="opacity-60 hover:opacity-100">Editar</a>
-              <form method="post" action="{% url 'delete_credit_card' card.pk %}"
-                onsubmit="return confirm('Excluir cartão {{ card.label }}?')">
-                {% csrf_token %}
-                <button type="submit" class="opacity-60 hover:opacity-100">Excluir</button>
-              </form>
-            </div>
-          </li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p class="opacity-40 text-xs mb-6">Nenhum cartão cadastrado.</p>
-    {% endif %}
-
-    <form method="post" action="{% url 'add_credit_card' %}" class="flex gap-2">
-      {% csrf_token %}
-      {{ card_form.label }}
-      <button type="submit"
-        class="border border-current px-4 py-2 text-xs uppercase tracking-widest hover:bg-current hover:text-[var(--bg)] transition-colors whitespace-nowrap">
-        Adicionar
-      </button>
-    </form>
+  {# ── Stats grid ── #}
+  <section class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+    {% for label, value in stats.items %}
+      {% if label != "total_to_receive" %}
+        <div class="border border-zinc-200 dark:border-zinc-800 px-5 py-4">
+          <p class="text-xs tracking-[0.2em] uppercase text-zinc-400 dark:text-zinc-500 mb-2">
+            {% if label == "active_debtors" %}Devedores ativos
+            {% elif label == "total_debtors" %}Total de pessoas
+            {% elif label == "total_debts" %}Dívidas registradas
+            {% elif label == "total_payments" %}Pagamentos recebidos
+            {% elif label == "total_paid" %}Total já pago
+            {% endif %}
+          </p>
+          <p class="text-2xl tracking-tight text-zinc-900 dark:text-white">
+            {% if label == "total_paid" %}R$ {{ value|floatformat:2 }}
+            {% else %}{{ value }}
+            {% endif %}
+          </p>
+        </div>
+      {% endif %}
+    {% endfor %}
   </section>
 
+  {# ── People + Credit cards ── #}
+  <div class="flex flex-col sm:flex-row gap-10">
+
+    {# ── People ── #}
+    <section class="max-w-sm flex-1">
+      <p class="text-xs tracking-[0.3em] text-zinc-400 dark:text-zinc-500 uppercase mb-4">Devedores</p>
+
+      {% if people %}
+        <ul class="flex flex-col mb-4">
+          {% for person in people %}
+            <li>
+              <a href="{% url 'person_detail' person.pk %}"
+                class="flex items-baseline justify-between py-2 border-b border-zinc-200 dark:border-zinc-900 text-xs tracking-widest uppercase hover:opacity-70 transition-opacity">
+                <span class="text-zinc-700 dark:text-zinc-300 truncate mr-4">{{ person.name }}</span>
+                <span class="{% if person.balance > 0 %}text-zinc-900 dark:text-white{% else %}text-zinc-400 dark:text-zinc-600{% endif %} shrink-0">
+                  R$ {{ person.balance|floatformat:2 }}
+                </span>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-xs text-zinc-400 dark:text-zinc-600 mb-4">Nenhum devedor cadastrado.</p>
+      {% endif %}
+
+      <form method="post" class="flex gap-2">
+        {% csrf_token %}
+        <input
+          type="text"
+          name="name"
+          placeholder="NOME"
+          required
+          class="flex-1 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors"
+        />
+        <button type="submit"
+          class="border border-zinc-400 dark:border-zinc-600 px-4 py-2 text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer whitespace-nowrap">
+          Adicionar
+        </button>
+      </form>
+    </section>
+
+    {# ── Credit Cards ── #}
+    <section class="max-w-sm flex-1">
+      <p class="text-xs tracking-[0.3em] text-zinc-400 dark:text-zinc-500 uppercase mb-4">Cartões</p>
+
+      {% if credit_cards %}
+        <ul class="flex flex-col mb-4">
+          {% for card in credit_cards %}
+            <li class="flex items-center justify-between py-2 border-b border-zinc-200 dark:border-zinc-900 text-xs">
+              <span class="tracking-widest uppercase text-zinc-700 dark:text-zinc-300">{{ card.label }}</span>
+              <div class="flex gap-4">
+                <a href="{% url 'edit_credit_card' card.pk %}"
+                  class="tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors">
+                  Editar
+                </a>
+                <form method="post" action="{% url 'delete_credit_card' card.pk %}"
+                  onsubmit="return confirm('Excluir cartão {{ card.label }}?')">
+                  {% csrf_token %}
+                  <button type="submit"
+                    class="tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+                    Excluir
+                  </button>
+                </form>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-xs text-zinc-400 dark:text-zinc-600 mb-4">Nenhum cartão cadastrado.</p>
+      {% endif %}
+
+      <form method="post" action="{% url 'add_credit_card' %}" class="flex gap-2">
+        {% csrf_token %}
+        <input
+          type="text"
+          name="label"
+          placeholder="LABEL"
+          required
+          class="flex-1 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors"
+        />
+        <button type="submit"
+          class="border border-zinc-400 dark:border-zinc-600 px-4 py-2 text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer whitespace-nowrap">
+          Adicionar
+        </button>
+      </form>
+    </section>
+
+  </div>
 </div>
+
+<script>
+  const btn = document.getElementById('toggle-total');
+  const display = document.getElementById('total-display');
+  const hidden = document.getElementById('total-hidden');
+  let isHidden = false;
+
+  btn.addEventListener('click', () => {
+    isHidden = !isHidden;
+    display.classList.toggle('hidden', isHidden);
+    hidden.classList.toggle('hidden', !isHidden);
+    btn.textContent = isHidden ? 'MOSTRAR' : 'ESCONDER';
+  });
+</script>
 {% endblock %}

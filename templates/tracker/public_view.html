@@ -1,71 +1,83 @@
 {% extends "base.html" %}
-{% block title %}{{ person.name }} — Extrato{% endblock %}
+{% block title %}Minha Dívida — Debt Tracker{% endblock %}
 
-{% block content %}
+{% block body_class %}min-h-screen bg-[#f0f0f4] dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100{% endblock %}
 
-<div class="mb-8">
-  <p class="text-xs uppercase tracking-widest opacity-40 mb-1">Extrato</p>
-  <h1 class="text-3xl font-bold tracking-tight">{{ person.name }}</h1>
-</div>
+{% block body %}
+<header class="bg-white dark:bg-zinc-950 border-b border-zinc-400 dark:border-zinc-800 px-6 py-3 flex items-center justify-between">
+  <h1 class="text-sm tracking-widest uppercase text-zinc-900 dark:text-white">Debt Tracker</h1>
+  <button id="theme-toggle"
+    class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+    Tema
+  </button>
+</header>
 
-<div class="grid grid-cols-3 gap-4 mb-10">
-  <div class="border border-current/20 p-4">
-    <p class="text-xs uppercase tracking-widest opacity-40 mb-1">Dívida total</p>
-    <p class="text-xl font-bold">R$ {{ total_debt|floatformat:2 }}</p>
-  </div>
-  <div class="border border-current/20 p-4">
-    <p class="text-xs uppercase tracking-widest opacity-40 mb-1">Total pago</p>
-    <p class="text-xl font-bold">R$ {{ total_paid|floatformat:2 }}</p>
-  </div>
-  <div class="border border-current/20 p-4">
-    <p class="text-xs uppercase tracking-widest opacity-40 mb-1">Saldo</p>
-    <p class="text-xl font-bold">R$ {{ balance|floatformat:2 }}</p>
-  </div>
-</div>
+<main class="max-w-md mx-auto px-4 sm:px-8 py-8">
+  <h2 class="text-xl tracking-widest uppercase text-zinc-900 dark:text-white mb-6">Minha Dívida</h2>
 
-<div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+  <section class="border border-zinc-200 dark:border-zinc-800">
+    {# Header #}
+    <div class="px-5 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-baseline justify-between gap-4">
+      <h3 class="text-lg tracking-widest uppercase text-zinc-900 dark:text-white">{{ person.name }}</h3>
+      <p class="text-lg tracking-tight text-zinc-900 dark:text-white shrink-0">R$ {{ balance|floatformat:2 }}</p>
+    </div>
 
-  <section>
-    <h2 class="text-xs uppercase tracking-widest opacity-40 mb-4">Dívidas</h2>
-    {% if debts %}
-      <ul class="divide-y divide-current/10">
-        {% for debt in debts %}
-          <li class="py-3 flex items-start justify-between gap-2">
-            <div>
-              <p class="font-medium">{{ debt.description }}</p>
-              <p class="text-xs opacity-40 mt-0.5">
-                {{ debt.date }}
-                {% if debt.credit_card %} · {{ debt.credit_card.label }}{% endif %}
-                {% if debt.method %} · {{ debt.get_method_display }}{% endif %}
-              </p>
-            </div>
-            <p class="font-bold shrink-0">R$ {{ debt.amount|floatformat:2 }}</p>
-          </li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p class="opacity-40 text-xs">Nenhuma dívida.</p>
-    {% endif %}
+    <div class="px-5 py-4">
+      {# Debts #}
+      <p class="text-xs tracking-[0.25em] uppercase text-zinc-400 dark:text-zinc-500 mb-3">Dívidas</p>
+
+      {% if not debts %}
+        <p class="text-xs text-zinc-400 dark:text-zinc-600 mb-6">Nenhuma dívida registrada.</p>
+      {% else %}
+        <ul class="flex flex-col gap-1 mb-6">
+          {% for debt in debts %}
+            <li class="flex justify-between text-xs py-1.5 border-b border-zinc-100 dark:border-zinc-900 text-zinc-700 dark:text-zinc-300">
+              <span class="truncate mr-4">
+                {{ debt.description }}
+                {% if debt.credit_card or debt.method %}
+                  <span class="ml-2 text-zinc-400 dark:text-zinc-600">
+                    {% if debt.credit_card %}{{ debt.credit_card.label }}{% else %}{{ debt.get_method_display }}{% endif %}
+                  </span>
+                {% endif %}
+              </span>
+              <span class="shrink-0 tracking-tight">R$ {{ debt.amount|floatformat:2 }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+      {# Payments #}
+      <p class="text-xs tracking-[0.25em] uppercase text-zinc-400 dark:text-zinc-500 mb-3">Pagamentos</p>
+
+      {% if not payments %}
+        <p class="text-xs text-zinc-400 dark:text-zinc-600">Nenhum pagamento registrado.</p>
+      {% else %}
+        <ul class="flex flex-col gap-1">
+          {% for payment in payments %}
+            <li class="text-xs py-1.5 border-b border-zinc-100 dark:border-zinc-900 text-zinc-600 dark:text-zinc-300">
+              <div class="flex justify-between">
+                <span class="text-zinc-500 dark:text-zinc-400">{{ payment.date }}</span>
+                <span class="tracking-tight">R$ {{ payment.amount|floatformat:2 }}</span>
+              </div>
+              <div class="mt-0.5">
+                <span class="text-[10px] tracking-wider text-zinc-400 dark:text-zinc-600">
+                  {{ payment.get_method_display }}
+                </span>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </div>
   </section>
+</main>
 
-  <section>
-    <h2 class="text-xs uppercase tracking-widest opacity-40 mb-4">Pagamentos</h2>
-    {% if payments %}
-      <ul class="divide-y divide-current/10">
-        {% for payment in payments %}
-          <li class="py-3 flex items-center justify-between">
-            <div>
-              <p class="font-medium">{{ payment.get_method_display }}</p>
-              <p class="text-xs opacity-40 mt-0.5">{{ payment.date }}</p>
-            </div>
-            <p class="font-bold">R$ {{ payment.amount|floatformat:2 }}</p>
-          </li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p class="opacity-40 text-xs">Nenhum pagamento.</p>
-    {% endif %}
-  </section>
-
-</div>
+<script>
+  document.getElementById('theme-toggle').addEventListener('click', () => {
+    const html = document.documentElement;
+    const isDark = html.classList.contains('dark');
+    html.classList.toggle('dark', !isDark);
+    localStorage.setItem('theme', isDark ? 'light' : 'dark');
+  });
+</script>
 {% endblock %}

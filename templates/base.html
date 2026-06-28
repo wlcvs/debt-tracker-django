@@ -1,55 +1,38 @@
 <!DOCTYPE html>
-<html lang="pt-BR" class="light">
+<html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}Debt Tracker{% endblock %}</title>
+  <script>
+    try {
+      var t = localStorage.getItem('theme');
+      if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      }
+    } catch(e) {}
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <style type="text/tailwindcss">
-    :root { --bg: #e8e8ed; --fg: #1a1a1a; }
-    html.dark { --bg: #1a1a1a; --fg: #e8e8ed; }
-    body { background-color: var(--bg); color: var(--fg); transition: background-color 0.2s, color 0.2s; }
-    input, select, textarea { color: var(--fg); background-color: transparent; }
-    select option { background-color: var(--bg); color: var(--fg); }
+    @custom-variant dark (&:where(.dark, .dark *));
+
+    @theme {
+      --font-mono: ui-monospace, "JetBrains Mono", "Fira Code", monospace;
+    }
+
+    body { font-family: var(--font-mono); }
+
+    input, select, textarea, button { font-family: inherit; }
+
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #a1a1aa; border-radius: 0; }
+    ::-webkit-scrollbar-thumb:hover { background: #71717a; }
+    .dark ::-webkit-scrollbar-thumb { background: #3f3f46; }
+    .dark ::-webkit-scrollbar-thumb:hover { background: #52525b; }
   </style>
 </head>
-<body class="min-h-screen font-mono text-sm">
-
-  <nav class="border-b border-current/20 px-6 py-3 flex items-center justify-between">
-    <a href="/" class="font-bold tracking-tight uppercase text-base">Debt Tracker</a>
-    <div class="flex items-center gap-6 text-xs uppercase tracking-widest">
-      {% if user.is_authenticated %}
-        <span class="opacity-40">{{ user.username }}</span>
-        <form method="post" action="/logout/">
-          {% csrf_token %}
-          <button type="submit" class="opacity-60 hover:opacity-100">Sair</button>
-        </form>
-      {% endif %}
-      <button id="theme-toggle" class="opacity-60 hover:opacity-100">Tema</button>
-    </div>
-  </nav>
-
-  <main class="px-6 py-8 max-w-5xl mx-auto">
-    {% if messages %}
-      {% for message in messages %}
-        <div class="mb-4 border border-current/30 px-4 py-2 text-xs uppercase tracking-widest">
-          {{ message }}
-        </div>
-      {% endfor %}
-    {% endif %}
-    {% block content %}{% endblock %}
-  </main>
-
-  <script>
-    const html = document.documentElement;
-    const stored = localStorage.getItem('theme');
-    if (stored === 'dark') html.classList.replace('light', 'dark');
-
-    document.getElementById('theme-toggle').addEventListener('click', () => {
-      const isDark = html.classList.contains('dark');
-      html.classList.replace(isDark ? 'dark' : 'light', isDark ? 'light' : 'dark');
-      localStorage.setItem('theme', isDark ? 'light' : 'dark');
-    });
-  </script>
+<body class="{% block body_class %}{% endblock %}">
+  {% block body %}{% endblock %}
 </body>
 </html>

@@ -1,131 +1,161 @@
-{% extends "base.html" %}
+{% extends "app_base.html" %}
 {% block title %}{{ person.name }} — Debt Tracker{% endblock %}
 
 {% block content %}
 
-{# ── Header ── #}
-<div class="mb-8 flex items-start justify-between gap-4 flex-wrap">
-  <div>
-    <a href="/" class="text-xs uppercase tracking-widest opacity-40 hover:opacity-100 mb-2 block">← Dashboard</a>
-    <h1 class="text-3xl font-bold tracking-tight">{{ person.name }}</h1>
+{# ── Person header ── #}
+<div class="border-b border-zinc-200 dark:border-zinc-800 pb-4 sm:pb-6 flex flex-col gap-3 mb-6 sm:mb-8">
+
+  {# Name display / edit toggle #}
+  <div id="name-display" class="flex items-start justify-between gap-4">
+    <h2 onclick="toggleNameEdit()"
+      class="text-lg tracking-widest uppercase text-zinc-900 dark:text-white cursor-pointer hover:opacity-60 transition-opacity"
+      title="Clique para editar">
+      {{ person.name }}
+    </h2>
+    <p class="text-xl tracking-tight text-zinc-900 dark:text-white shrink-0">
+      R$ {{ balance|floatformat:2 }}
+    </p>
   </div>
-  <div class="flex gap-3 text-xs uppercase tracking-widest mt-6">
-    <button onclick="document.getElementById('edit-person-form').classList.toggle('hidden')"
-      class="border border-current/40 px-3 py-1 hover:border-current transition-colors">
-      Editar nome
+
+  <div id="name-edit" class="hidden flex items-center gap-2 flex-wrap">
+    <form method="post" action="{% url 'edit_person' person.pk %}" class="flex items-center gap-2 flex-wrap">
+      {% csrf_token %}
+      <input type="text" name="name" value="{{ person.name }}" required autofocus
+        placeholder="NOME"
+        class="bg-transparent border border-zinc-400 dark:border-zinc-600 px-2 py-1 text-sm tracking-widest uppercase text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-700 dark:focus:border-white transition-colors" />
+      <button type="submit"
+        class="text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+        Salvar
+      </button>
+      <button type="button" onclick="toggleNameEdit()"
+        class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors cursor-pointer">
+        Cancelar
+      </button>
+    </form>
+  </div>
+
+  {# Actions #}
+  <div class="flex items-center gap-3 sm:gap-4 flex-wrap">
+    <a href="/"
+      class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors">
+      ← Dashboard
+    </a>
+    <button onclick="copyPublicLink('{{ request.scheme }}://{{ request.get_host }}/public/{{ person.pk }}/')"
+      class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+      Copiar link público
     </button>
     <form method="post" action="{% url 'delete_person' person.pk %}"
       onsubmit="return confirm('Excluir {{ person.name }} e todos os dados? Esta ação é irreversível.')">
       {% csrf_token %}
-      <button type="submit" class="border border-current/40 px-3 py-1 hover:border-current transition-colors">
-        Excluir
+      <button type="submit"
+        class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+        Excluir devedor
       </button>
     </form>
-    <button onclick="navigator.clipboard.writeText('{{ request.scheme }}://{{ request.get_host }}/public/{{ person.pk }}/')"
-      class="border border-current/40 px-3 py-1 hover:border-current transition-colors">
-      Copiar link público
-    </button>
   </div>
 </div>
 
-{# ── Edit person form (hidden) ── #}
-<form id="edit-person-form" method="post" action="{% url 'edit_person' person.pk %}"
-  class="hidden mb-8 flex gap-2 max-w-sm">
-  {% csrf_token %}
-  {{ person_form.name }}
-  <button type="submit"
-    class="border border-current px-4 py-2 text-xs uppercase tracking-widest hover:bg-current hover:text-[var(--bg)] transition-colors whitespace-nowrap">
-    Salvar
-  </button>
-</form>
-
-{# ── Balance ── #}
-<div class="grid grid-cols-3 gap-4 mb-10">
-  <div class="border border-current/20 p-4">
-    <p class="text-xs uppercase tracking-widest opacity-40 mb-1">Dívida total</p>
-    <p class="text-xl font-bold">R$ {{ total_debt|floatformat:2 }}</p>
-  </div>
-  <div class="border border-current/20 p-4">
-    <p class="text-xs uppercase tracking-widest opacity-40 mb-1">Total pago</p>
-    <p class="text-xl font-bold">R$ {{ total_paid|floatformat:2 }}</p>
-  </div>
-  <div class="border border-current/20 p-4">
-    <p class="text-xs uppercase tracking-widest opacity-40 mb-1">Saldo</p>
-    <p class="text-xl font-bold">R$ {{ balance|floatformat:2 }}</p>
-  </div>
-</div>
-
-<div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+{# ── Content grid ── #}
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
 
   {# ── Debts ── #}
-  <section>
-    <h2 class="text-xs uppercase tracking-widest opacity-40 mb-4">Dívidas</h2>
+  <section class="flex flex-col gap-4">
+    <p class="text-xs tracking-[0.25em] uppercase text-zinc-400 dark:text-zinc-500">Dívidas</p>
 
     {% if debts %}
-      <ul class="divide-y divide-current/10 mb-6">
+      <ul class="flex flex-col">
         {% for debt in debts %}
-          <li class="py-3">
-            <div class="flex items-start justify-between gap-2">
-              <div>
-                <p class="font-medium">{{ debt.description }}</p>
-                <p class="text-xs opacity-40 mt-0.5">
-                  {{ debt.date }}
-                  {% if debt.credit_card %} · {{ debt.credit_card.label }}{% endif %}
-                  {% if debt.method %} · {{ debt.get_method_display }}{% endif %}
-                </p>
-              </div>
-              <div class="text-right shrink-0">
-                <p class="font-bold">R$ {{ debt.amount|floatformat:2 }}</p>
-                <div class="flex gap-2 text-xs uppercase tracking-widest mt-1">
-                  <a href="{% url 'edit_debt' person.pk debt.pk %}" class="opacity-60 hover:opacity-100">Editar</a>
-                  <form method="post" action="{% url 'delete_debt' person.pk debt.pk %}"
-                    onsubmit="return confirm('Excluir esta dívida?')">
-                    {% csrf_token %}
-                    <button type="submit" class="opacity-60 hover:opacity-100">Excluir</button>
-                  </form>
-                </div>
+          {# ── Display view ── #}
+          <li id="view-debt-{{ debt.pk }}" class="flex justify-between items-center text-xs py-2 border-b border-zinc-100 dark:border-zinc-900 gap-2 text-zinc-700 dark:text-zinc-300">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="truncate">{{ debt.description }}</span>
+              {% if debt.credit_card %}
+                <span class="shrink-0 text-[10px] tracking-widest uppercase border border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 px-1.5 py-0.5">
+                  {{ debt.credit_card.label }}
+                </span>
+              {% elif debt.method %}
+                <span class="shrink-0 text-[10px] tracking-widest uppercase border border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 px-1.5 py-0.5">
+                  {{ debt.get_method_display }}
+                </span>
+              {% endif %}
+            </div>
+            <div class="flex items-center gap-4 shrink-0">
+              <span class="tracking-tight">R$ {{ debt.amount|floatformat:2 }}</span>
+              <div class="flex gap-2">
+                <button onclick="editDebt({{ debt.pk }})"
+                  class="text-zinc-400 dark:text-zinc-700 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors cursor-pointer">✎</button>
+                <form method="post" action="{% url 'delete_debt' person.pk debt.pk %}"
+                  onsubmit="return confirm('Excluir esta dívida?')" class="inline">
+                  {% csrf_token %}
+                  <button type="submit"
+                    class="text-zinc-400 dark:text-zinc-700 hover:text-red-500 transition-colors cursor-pointer">✕</button>
+                </form>
               </div>
             </div>
           </li>
+
+          {# ── Edit form (hidden) ── #}
+          <li id="edit-debt-{{ debt.pk }}" class="hidden flex flex-col gap-1 py-2 border-b border-zinc-200 dark:border-zinc-900">
+            <form method="post" action="{% url 'edit_debt' person.pk debt.pk %}" class="flex flex-col gap-1">
+              {% csrf_token %}
+              <input type="text" name="description" value="{{ debt.description }}" required
+                class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
+              <div class="flex gap-2 flex-wrap">
+                <input type="number" name="amount" value="{{ debt.amount }}" step="0.01" required
+                  class="w-24 bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
+                <input type="date" name="date" value="{{ debt.date|date:'Y-m-d' }}" required
+                  class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
+              </div>
+              <div class="flex gap-3 mt-1">
+                <button type="submit"
+                  class="text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+                  Salvar
+                </button>
+                <button type="button" onclick="cancelDebt({{ debt.pk }})"
+                  class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors cursor-pointer">
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </li>
         {% endfor %}
       </ul>
-    {% else %}
-      <p class="opacity-40 text-xs mb-6">Nenhuma dívida registrada.</p>
     {% endif %}
 
-    {# Add debt form #}
-    <details class="border border-current/20">
-      <summary class="px-4 py-2 text-xs uppercase tracking-widest cursor-pointer hover:opacity-60">
+    {# ── Add debt form ── #}
+    <details class="group">
+      <summary
+        class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer list-none">
         + Adicionar dívida
       </summary>
-      <form method="post" action="{% url 'add_debt' person.pk %}" class="p-4 space-y-3 border-t border-current/20">
+      <form method="post" action="{% url 'add_debt' person.pk %}" class="mt-3 flex flex-col gap-2">
         {% csrf_token %}
-        <div>
-          <label class="block text-xs uppercase tracking-widest opacity-40 mb-1">Descrição</label>
-          {{ debt_form.description }}
+        <input type="text" name="description" placeholder="DESCRIÇÃO" required
+          class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest placeholder:text-zinc-400 dark:placeholder:text-zinc-600 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
+        <div class="flex gap-2">
+          <input type="number" name="amount" placeholder="VALOR" step="0.01" required
+            class="w-28 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest placeholder:text-zinc-400 dark:placeholder:text-zinc-600 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
+          <input type="date" name="date" required
+            class="flex-1 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
         </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs uppercase tracking-widest opacity-40 mb-1">Valor (R$)</label>
-            {{ debt_form.amount }}
-          </div>
-          <div>
-            <label class="block text-xs uppercase tracking-widest opacity-40 mb-1">Data</label>
-            {{ debt_form.date }}
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs uppercase tracking-widest opacity-40 mb-1">Cartão</label>
-            {{ debt_form.credit_card }}
-          </div>
-          <div>
-            <label class="block text-xs uppercase tracking-widest opacity-40 mb-1">Método</label>
-            {{ debt_form.method }}
-          </div>
+        <div class="flex gap-2">
+          <select name="credit_card"
+            class="flex-1 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors">
+            <option value="">— Cartão —</option>
+            {% for card in debt_form.credit_card.field.queryset %}
+              <option value="{{ card.pk }}">{{ card.label }}</option>
+            {% endfor %}
+          </select>
+          <select name="method"
+            class="flex-1 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors">
+            <option value="">— Método —</option>
+            <option value="PIX">Pix</option>
+            <option value="CASH">Dinheiro</option>
+          </select>
         </div>
         <button type="submit"
-          class="border border-current px-4 py-2 text-xs uppercase tracking-widest hover:bg-current hover:text-[var(--bg)] transition-colors">
+          class="border border-zinc-400 dark:border-zinc-600 px-4 py-2 text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer self-start">
           Salvar
         </button>
       </form>
@@ -133,58 +163,92 @@
   </section>
 
   {# ── Payments ── #}
-  <section>
-    <h2 class="text-xs uppercase tracking-widest opacity-40 mb-4">Pagamentos</h2>
+  <section class="flex flex-col gap-4">
+    <p class="text-xs tracking-[0.25em] uppercase text-zinc-400 dark:text-zinc-500">Pagamentos</p>
 
     {% if payments %}
-      <ul class="divide-y divide-current/10 mb-6">
+      <ul class="flex flex-col">
         {% for payment in payments %}
-          <li class="py-3 flex items-start justify-between gap-2">
-            <div>
-              <p class="font-medium">{{ payment.get_method_display }}</p>
-              <p class="text-xs opacity-40 mt-0.5">{{ payment.date }}</p>
-            </div>
-            <div class="text-right shrink-0">
-              <p class="font-bold">R$ {{ payment.amount|floatformat:2 }}</p>
-              <div class="flex gap-2 text-xs uppercase tracking-widest mt-1">
-                <a href="{% url 'edit_payment' person.pk payment.pk %}" class="opacity-60 hover:opacity-100">Editar</a>
-                <form method="post" action="{% url 'delete_payment' person.pk payment.pk %}"
-                  onsubmit="return confirm('Excluir este pagamento?')">
-                  {% csrf_token %}
-                  <button type="submit" class="opacity-60 hover:opacity-100">Excluir</button>
-                </form>
+          {# ── Display view ── #}
+          <li id="view-payment-{{ payment.pk }}" class="text-xs py-2 border-b border-zinc-100 dark:border-zinc-900 text-zinc-600 dark:text-zinc-300">
+            <div class="flex justify-between items-center">
+              <div>
+                <span class="text-zinc-500 dark:text-zinc-400">{{ payment.date }}</span>
+              </div>
+              <div class="flex items-center gap-4">
+                <span class="tracking-tight">R$ {{ payment.amount|floatformat:2 }}</span>
+                <div class="flex gap-2">
+                  <button onclick="editPayment({{ payment.pk }})"
+                    class="text-zinc-400 dark:text-zinc-700 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors cursor-pointer">✎</button>
+                  <form method="post" action="{% url 'delete_payment' person.pk payment.pk %}"
+                    onsubmit="return confirm('Excluir este pagamento?')" class="inline">
+                    {% csrf_token %}
+                    <button type="submit"
+                      class="text-zinc-400 dark:text-zinc-700 hover:text-red-500 transition-colors cursor-pointer">✕</button>
+                  </form>
+                </div>
               </div>
             </div>
+            <div class="mt-0.5">
+              <span class="text-[10px] tracking-wider text-zinc-400 dark:text-zinc-600">
+                {{ payment.get_method_display }}
+              </span>
+            </div>
+          </li>
+
+          {# ── Edit form (hidden) ── #}
+          <li id="edit-payment-{{ payment.pk }}" class="hidden flex flex-col gap-1 py-2 border-b border-zinc-200 dark:border-zinc-900">
+            <form method="post" action="{% url 'edit_payment' person.pk payment.pk %}" class="flex flex-col gap-1">
+              {% csrf_token %}
+              <div class="flex gap-2">
+                <input type="number" name="amount" value="{{ payment.amount }}" step="0.01" required
+                  class="w-24 bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
+                <input type="date" name="date" value="{{ payment.date|date:'Y-m-d' }}" required
+                  class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
+              </div>
+              <select name="method"
+                class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400">
+                <option value="PIX" {% if payment.method == "PIX" %}selected{% endif %}>Pix</option>
+                <option value="CASH" {% if payment.method == "CASH" %}selected{% endif %}>Dinheiro</option>
+              </select>
+              <div class="flex gap-3 mt-1">
+                <button type="submit"
+                  class="text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+                  Salvar
+                </button>
+                <button type="button" onclick="cancelPayment({{ payment.pk }})"
+                  class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors cursor-pointer">
+                  Cancelar
+                </button>
+              </div>
+            </form>
           </li>
         {% endfor %}
       </ul>
-    {% else %}
-      <p class="opacity-40 text-xs mb-6">Nenhum pagamento registrado.</p>
     {% endif %}
 
-    {# Add payment form #}
-    <details class="border border-current/20">
-      <summary class="px-4 py-2 text-xs uppercase tracking-widest cursor-pointer hover:opacity-60">
+    {# ── Add payment form ── #}
+    <details class="group">
+      <summary
+        class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer list-none">
         + Adicionar pagamento
       </summary>
-      <form method="post" action="{% url 'add_payment' person.pk %}" class="p-4 space-y-3 border-t border-current/20">
+      <form method="post" action="{% url 'add_payment' person.pk %}" class="mt-3 flex flex-col gap-2">
         {% csrf_token %}
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs uppercase tracking-widest opacity-40 mb-1">Valor (R$)</label>
-            {{ payment_form.amount }}
-          </div>
-          <div>
-            <label class="block text-xs uppercase tracking-widest opacity-40 mb-1">Data</label>
-            {{ payment_form.date }}
-          </div>
+        <div class="flex gap-2">
+          <input type="number" name="amount" placeholder="VALOR" step="0.01" required
+            class="w-28 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest placeholder:text-zinc-400 dark:placeholder:text-zinc-600 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
+          <input type="date" name="date" required
+            class="flex-1 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
         </div>
-        <div>
-          <label class="block text-xs uppercase tracking-widest opacity-40 mb-1">Método</label>
-          {{ payment_form.method }}
-        </div>
+        <select name="method" required
+          class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors">
+          <option value="">— Método —</option>
+          <option value="PIX">Pix</option>
+          <option value="CASH">Dinheiro</option>
+        </select>
         <button type="submit"
-          class="border border-current px-4 py-2 text-xs uppercase tracking-widest hover:bg-current hover:text-[var(--bg)] transition-colors">
+          class="border border-zinc-400 dark:border-zinc-600 px-4 py-2 text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer self-start">
           Salvar
         </button>
       </form>
@@ -192,4 +256,33 @@
   </section>
 
 </div>
+
+<script>
+  function toggleNameEdit() {
+    document.getElementById('name-display').classList.toggle('hidden');
+    document.getElementById('name-edit').classList.toggle('hidden');
+  }
+
+  function editDebt(id) {
+    document.getElementById('view-debt-' + id).classList.add('hidden');
+    document.getElementById('edit-debt-' + id).classList.remove('hidden');
+  }
+  function cancelDebt(id) {
+    document.getElementById('view-debt-' + id).classList.remove('hidden');
+    document.getElementById('edit-debt-' + id).classList.add('hidden');
+  }
+
+  function editPayment(id) {
+    document.getElementById('view-payment-' + id).classList.add('hidden');
+    document.getElementById('edit-payment-' + id).classList.remove('hidden');
+  }
+  function cancelPayment(id) {
+    document.getElementById('view-payment-' + id).classList.remove('hidden');
+    document.getElementById('edit-payment-' + id).classList.add('hidden');
+  }
+
+  function copyPublicLink(url) {
+    navigator.clipboard.writeText(url).then(() => alert('Link copiado!'));
+  }
+</script>
 {% endblock %}
