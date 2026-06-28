@@ -65,7 +65,10 @@ def dashboard(request):
         "total_paid": total_paid_sum,
     }
 
-    credit_cards = CreditCard.objects.filter(user=request.user).order_by("label")
+    from django.db.models import Count
+    credit_cards = CreditCard.objects.filter(user=request.user).annotate(
+        debt_count=Count("debts")
+    ).order_by("label")
 
     return render(request, "tracker/dashboard.html", {
         "people": people,
@@ -234,7 +237,6 @@ def edit_credit_card(request, card_id):
 def delete_credit_card(request, card_id):
     card = get_object_or_404(CreditCard, pk=card_id, user=request.user)
     if card.debts.exists():
-        messages.error(request, f'O cartão "{card.label}" não pode ser excluído pois possui dívidas vinculadas.')
         return redirect("dashboard")
     card.delete()
     return redirect("dashboard")

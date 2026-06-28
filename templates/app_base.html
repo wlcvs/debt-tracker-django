@@ -44,16 +44,22 @@
     <p id="modal-title" class="text-xs tracking-[0.2em] uppercase text-zinc-900 dark:text-white mb-2"></p>
     <p id="modal-desc" class="text-xs text-zinc-500 dark:text-zinc-400 mb-6 leading-relaxed"></p>
     <div class="flex gap-3">
-      <form id="modal-form" method="post">
+      {# Normal: Excluir + Cancelar #}
+      <form id="modal-form" method="post" class="contents">
         {% csrf_token %}
-        <button type="submit"
+        <button id="modal-confirm-btn" type="submit"
           class="border border-red-300 dark:border-red-800 px-5 py-2 text-xs tracking-widest uppercase text-red-500 hover:bg-red-500 hover:text-white transition-colors cursor-pointer">
           Excluir
         </button>
       </form>
-      <button onclick="closeModal()"
+      <button id="modal-cancel-btn" onclick="closeModal()"
         class="border border-zinc-300 dark:border-zinc-700 px-5 py-2 text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
         Cancelar
+      </button>
+      {# Blocked: só Fechar #}
+      <button id="modal-close-btn" onclick="closeModal()"
+        class="hidden border border-zinc-300 dark:border-zinc-700 px-5 py-2 text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+        Fechar
       </button>
     </div>
   </div>
@@ -71,10 +77,14 @@
   });
 
   // Delete modal
-  function openModal(title, desc, action) {
+  function openModal(title, desc, action, blocked) {
     document.getElementById('modal-title').textContent = title;
     document.getElementById('modal-desc').textContent = desc;
-    document.getElementById('modal-form').action = action;
+    const blocked_ = !!blocked;
+    document.getElementById('modal-form').action = blocked_ ? '' : action;
+    document.getElementById('modal-confirm-btn').classList.toggle('hidden', blocked_);
+    document.getElementById('modal-cancel-btn').classList.toggle('hidden', blocked_);
+    document.getElementById('modal-close-btn').classList.toggle('hidden', !blocked_);
     document.getElementById('modal-overlay').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
   }

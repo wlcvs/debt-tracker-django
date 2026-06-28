@@ -105,10 +105,10 @@
                   Editar
                 </button>
                 <button
-                  data-modal-title="Excluir cartão"
-                  data-modal-desc="{{ card.label }} será removido. Dívidas vinculadas ficam sem cartão."
+                  data-card-label="{{ card.label }}"
+                  data-debt-count="{{ card.debt_count }}"
                   data-modal-action="{% url 'delete_credit_card' card.pk %}"
-                  onclick="openModal(this.dataset.modalTitle, this.dataset.modalDesc, this.dataset.modalAction)"
+                  onclick="openCardDeleteModal(this)"
                   class="tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
                   Excluir
                 </button>
@@ -160,6 +160,20 @@
 </div>
 
 <script>
+  function openCardDeleteModal(btn) {
+    const hasDebts = parseInt(btn.dataset.debtCount) > 0;
+    const label = btn.dataset.cardLabel;
+    if (hasDebts) {
+      openModal(
+        'Não é possível excluir',
+        `"${label}" possui dívidas vinculadas. Remova todas as dívidas antes de excluir o cartão.`,
+        '', true
+      );
+    } else {
+      openModal('Excluir cartão', `"${label}" será removido permanentemente.`, btn.dataset.modalAction, false);
+    }
+  }
+
   function editCard(id) {
     document.getElementById('view-card-' + id).classList.add('hidden');
     document.getElementById('edit-card-' + id).classList.remove('hidden');
