@@ -72,7 +72,6 @@ Payment    — amount (Decimal 10,2), date, method (PIX|CASH)
 - **`method` em Payment** é PIX ou CASH, sempre obrigatório.
 - **Design:** HUD/monocromático (escala de cinza, sem cores de destaque). Fundo claro `#e8e8ed`. Toggle dark/light. **UI em pt-BR.**
 - **Commits:** Conventional Commits em inglês (`feat:`, `fix:`, `chore:`…).
-- **Nunca fazer deploy** sem Wallacy revisar a feature primeiro.
 - **Simples** — app de admin único, sem overengineering.
 
 ## Referências
