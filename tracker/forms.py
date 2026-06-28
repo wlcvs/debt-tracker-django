@@ -27,11 +27,15 @@ class CreditCardForm(forms.ModelForm):
 
 
 class DebtForm(forms.ModelForm):
+    amount = forms.DecimalField(
+        max_digits=10, decimal_places=2, localize=True,
+        widget=forms.TextInput(attrs={"class": INPUT_CLASS, "inputmode": "decimal"}),
+    )
+
     class Meta:
         model = Debt
         fields = ["amount", "description", "date", "credit_card", "method"]
         widgets = {
-            "amount": forms.NumberInput(attrs={"class": INPUT_CLASS, "step": "0.01"}),
             "description": forms.TextInput(attrs={"class": INPUT_CLASS}),
             "date": forms.DateInput(attrs={"class": INPUT_CLASS, "type": "date"}),
             "credit_card": forms.Select(attrs={"class": SELECT_CLASS}),
@@ -47,11 +51,15 @@ class DebtForm(forms.ModelForm):
 
 
 class PaymentForm(forms.ModelForm):
+    amount = forms.DecimalField(
+        max_digits=10, decimal_places=2, localize=True,
+        widget=forms.TextInput(attrs={"class": INPUT_CLASS, "inputmode": "decimal"}),
+    )
+
     class Meta:
         model = Payment
         fields = ["amount", "date", "method"]
         widgets = {
-            "amount": forms.NumberInput(attrs={"class": INPUT_CLASS, "step": "0.01"}),
             "date": forms.DateInput(attrs={"class": INPUT_CLASS, "type": "date"}),
             "method": forms.Select(attrs={"class": SELECT_CLASS}),
         }
