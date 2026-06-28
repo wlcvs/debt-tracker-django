@@ -60,6 +60,7 @@
       document.querySelectorAll('[data-edit-cancel]').forEach(btn => {
         if (!btn.closest('.hidden')) btn.click();
       });
+      document.querySelectorAll('details[open]').forEach(el => el.removeAttribute('open'));
     });
   </script>
 </body>
