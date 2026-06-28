@@ -74,7 +74,8 @@
 
     function resetForm(form) {
       if (!form) return;
-      form.reset();
+      form.querySelectorAll('input, textarea').forEach(el => { el.value = ''; });
+      form.querySelectorAll('select').forEach(sel => { sel.selectedIndex = 0; });
       form.querySelectorAll('.field-error').forEach(el => el.textContent = '');
     }
 
