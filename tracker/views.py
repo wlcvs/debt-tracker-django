@@ -228,7 +228,7 @@ def edit_credit_card(request, card_id):
     return render(request, "tracker/edit_form.html", {
         "form": form,
         "title": "Editar cartão",
-        "back_url": "/",
+        "back_url": "/dashboard/",
     })
 
 
@@ -246,6 +246,12 @@ def delete_credit_card(request, card_id):
 
 def custom_404(request, exception=None, **kwargs):
     return render(request, "404.html", status=404)
+
+
+def home_redirect(request):
+    if request.user.is_authenticated:
+        return redirect("dashboard")
+    return redirect("public_landing")
 
 
 def public_landing(request):

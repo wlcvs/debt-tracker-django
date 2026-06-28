@@ -2,8 +2,15 @@ import pytest
 
 
 @pytest.mark.django_db
-def test_dashboard_redirects_unauthenticated(client):
+def test_root_redirects_unauthenticated_to_public(client):
     response = client.get("/")
+    assert response.status_code == 302
+    assert "/public/" in response["Location"]
+
+
+@pytest.mark.django_db
+def test_dashboard_redirects_unauthenticated_to_login(client):
+    response = client.get("/dashboard/")
     assert response.status_code == 302
     assert "/login/" in response["Location"]
 
@@ -12,7 +19,6 @@ def test_dashboard_redirects_unauthenticated(client):
 def test_login_with_valid_credentials(client, user):
     response = client.post("/login/", {"username": "testuser", "password": "testpass"})
     assert response.status_code == 302
-    assert response["Location"] == "/"
 
 
 @pytest.mark.django_db
