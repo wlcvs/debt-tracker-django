@@ -43,22 +43,24 @@
   <div class="relative bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 max-w-sm w-full">
     <p id="modal-title" class="text-xs tracking-[0.2em] uppercase text-zinc-900 dark:text-white mb-2"></p>
     <p id="modal-desc" class="text-xs text-zinc-500 dark:text-zinc-400 mb-6 leading-relaxed"></p>
-    <div class="flex gap-3">
-      {# Normal: Excluir + Cancelar #}
-      <form id="modal-form" method="post" class="contents">
+    {# Normal: Excluir + Cancelar #}
+    <div id="modal-normal-btns" class="flex gap-3">
+      <form id="modal-form" method="post">
         {% csrf_token %}
-        <button id="modal-confirm-btn" type="submit"
+        <button type="submit"
           class="border border-red-300 dark:border-red-800 px-5 py-2 text-xs tracking-widest uppercase text-red-500 hover:bg-red-500 hover:text-white transition-colors cursor-pointer">
           Excluir
         </button>
       </form>
-      <button id="modal-cancel-btn" onclick="closeModal()"
+      <button onclick="closeModal()"
         class="border border-zinc-300 dark:border-zinc-700 px-5 py-2 text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
         Cancelar
       </button>
-      {# Blocked: só Fechar #}
-      <button id="modal-close-btn" onclick="closeModal()"
-        class="hidden border border-zinc-300 dark:border-zinc-700 px-5 py-2 text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+    </div>
+    {# Blocked: só Fechar #}
+    <div id="modal-blocked-btns" class="hidden">
+      <button onclick="closeModal()"
+        class="border border-zinc-300 dark:border-zinc-700 px-5 py-2 text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
         Fechar
       </button>
     </div>
@@ -82,9 +84,8 @@
     document.getElementById('modal-desc').textContent = desc;
     const blocked_ = !!blocked;
     document.getElementById('modal-form').action = blocked_ ? '' : action;
-    document.getElementById('modal-confirm-btn').classList.toggle('hidden', blocked_);
-    document.getElementById('modal-cancel-btn').classList.toggle('hidden', blocked_);
-    document.getElementById('modal-close-btn').classList.toggle('hidden', !blocked_);
+    document.getElementById('modal-normal-btns').classList.toggle('hidden', blocked_);
+    document.getElementById('modal-blocked-btns').classList.toggle('hidden', !blocked_);
     document.getElementById('modal-overlay').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
   }
