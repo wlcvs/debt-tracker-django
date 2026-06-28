@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Debt Tracker{% endblock %}</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style type="text/tailwindcss">
+    :root { --bg: #e8e8ed; --fg: #1a1a1a; }
+    .dark { --bg: #1a1a1a; --fg: #e8e8ed; }
+    body { background-color: var(--bg); color: var(--fg); }
+  </style>
+</head>
+<body class="min-h-screen font-mono">
+
+  <nav class="border-b border-current/20 px-6 py-3 flex items-center justify-between">
+    <a href="/" class="font-bold tracking-tight">DEBT TRACKER</a>
+    <div class="flex items-center gap-4 text-sm">
+      {% if user.is_authenticated %}
+        <a href="/logout/" class="opacity-60 hover:opacity-100">sair</a>
+      {% endif %}
+      <button id="theme-toggle" class="opacity-60 hover:opacity-100 text-xs uppercase tracking-widest">
+        tema
+      </button>
+    </div>
+  </nav>
+
+  <main class="px-6 py-8 max-w-4xl mx-auto">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="mb-4 border border-current/30 px-4 py-2 text-sm">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <script>
+    const html = document.documentElement;
+    const btn = document.getElementById('theme-toggle');
+    const stored = localStorage.getItem('theme');
+    if (stored === 'dark') html.classList.replace('light', 'dark');
+
+    btn.addEventListener('click', () => {
+      const isDark = html.classList.contains('dark');
+      html.classList.replace(isDark ? 'dark' : 'light', isDark ? 'light' : 'dark');
+      localStorage.setItem('theme', isDark ? 'light' : 'dark');
+    });
+  </script>
+</body>
+</html>
