@@ -100,25 +100,14 @@
                   class="tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
                   Editar
                 </button>
-                <span id="action-card-{{ card.pk }}">
-                  <button onclick="showConfirm('card-{{ card.pk }}')"
-                    class="tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
-                    Excluir
-                  </button>
-                </span>
-                <span id="confirm-card-{{ card.pk }}" class="hidden flex items-center gap-3">
-                  <span class="text-red-500">Excluir?</span>
-                  <form method="post" action="{% url 'delete_credit_card' card.pk %}" class="inline">
-                    {% csrf_token %}
-                    <button type="submit" class="tracking-widest uppercase text-red-500 hover:text-red-700 transition-colors cursor-pointer">
-                      Confirmar
-                    </button>
-                  </form>
-                  <button onclick="hideConfirm('card-{{ card.pk }}')"
-                    class="tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors cursor-pointer">
-                    Cancelar
-                  </button>
-                </span>
+                <button
+                  data-modal-title="Excluir cartão"
+                  data-modal-desc="{{ card.label }} será removido. Dívidas vinculadas ficam sem cartão."
+                  data-modal-action="{% url 'delete_credit_card' card.pk %}"
+                  onclick="openModal(this.dataset.modalTitle, this.dataset.modalDesc, this.dataset.modalAction)"
+                  class="tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+                  Excluir
+                </button>
               </div>
             </li>
             {# Inline edit row (hidden) #}

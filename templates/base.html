@@ -34,5 +34,26 @@
 </head>
 <body class="{% block body_class %}{% endblock %}">
   {% block body %}{% endblock %}
+  <script>
+    // Custom form validation — replaces browser native bubbles
+    document.addEventListener('invalid', (e) => {
+      e.preventDefault();
+      const el = e.target;
+      if (!el._errEl || !el._errEl.isConnected) {
+        const err = document.createElement('p');
+        err.className = 'field-error text-xs text-red-500 mt-1 tracking-wide';
+        el.insertAdjacentElement('afterend', err);
+        el._errEl = err;
+      }
+      el._errEl.textContent = el.validity.valueMissing ? 'Campo obrigatório'
+        : el.validity.typeMismatch   ? 'Formato inválido'
+        : el.validity.tooShort       ? 'Muito curto'
+        : 'Valor inválido';
+    }, true);
+
+    document.addEventListener('input', (e) => {
+      if (e.target._errEl && e.target.validity.valid) e.target._errEl.textContent = '';
+    }, true);
+  </script>
 </body>
 </html>

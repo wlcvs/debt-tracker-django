@@ -36,28 +36,52 @@
   {% block content %}{% endblock %}
 </main>
 
+{# ── Delete confirmation modal ── #}
+<div id="modal-overlay"
+  class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="closeModal()"></div>
+  <div class="relative bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 max-w-sm w-full">
+    <p id="modal-title" class="text-xs tracking-[0.2em] uppercase text-zinc-900 dark:text-white mb-2"></p>
+    <p id="modal-desc" class="text-xs text-zinc-500 dark:text-zinc-400 mb-6 leading-relaxed"></p>
+    <div class="flex gap-3">
+      <form id="modal-form" method="post">
+        {% csrf_token %}
+        <button type="submit"
+          class="border border-red-300 dark:border-red-800 px-5 py-2 text-xs tracking-widest uppercase text-red-500 hover:bg-red-500 hover:text-white transition-colors cursor-pointer">
+          Excluir
+        </button>
+      </form>
+      <button onclick="closeModal()"
+        class="border border-zinc-300 dark:border-zinc-700 px-5 py-2 text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+        Cancelar
+      </button>
+    </div>
+  </div>
+</div>
+
 <script>
-  function themeLabel(isDark) {
-    return isDark ? 'Tema claro' : 'Tema escuro';
-  }
-
+  // Theme toggle
   const themeBtn = document.getElementById('theme-toggle');
-  themeBtn.textContent = themeLabel(document.documentElement.classList.contains('dark'));
-
+  themeBtn.textContent = document.documentElement.classList.contains('dark') ? 'Tema claro' : 'Tema escuro';
   themeBtn.addEventListener('click', () => {
     const isDark = document.documentElement.classList.contains('dark');
     document.documentElement.classList.toggle('dark', !isDark);
     localStorage.setItem('theme', isDark ? 'light' : 'dark');
-    themeBtn.textContent = themeLabel(!isDark);
+    themeBtn.textContent = !isDark ? 'Tema claro' : 'Tema escuro';
   });
 
-  function showConfirm(id) {
-    document.getElementById('action-' + id).classList.add('hidden');
-    document.getElementById('confirm-' + id).classList.remove('hidden');
+  // Delete modal
+  function openModal(title, desc, action) {
+    document.getElementById('modal-title').textContent = title;
+    document.getElementById('modal-desc').textContent = desc;
+    document.getElementById('modal-form').action = action;
+    document.getElementById('modal-overlay').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
   }
-  function hideConfirm(id) {
-    document.getElementById('action-' + id).classList.remove('hidden');
-    document.getElementById('confirm-' + id).classList.add('hidden');
+  function closeModal() {
+    document.getElementById('modal-overlay').classList.add('hidden');
+    document.body.style.overflow = '';
   }
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
 </script>
 {% endblock %}
