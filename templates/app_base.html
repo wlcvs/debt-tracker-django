@@ -71,6 +71,22 @@
 
 <script>
   // Delete modal
+  function _modalBtns() {
+    return [...document.querySelectorAll('#modal-overlay button')].filter(b => !b.closest('.hidden'));
+  }
+
+  function _tabTrap(e) {
+    if (e.key !== 'Tab') return;
+    const btns = _modalBtns();
+    if (!btns.length) return;
+    const first = btns[0], last = btns[btns.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+    } else {
+      if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  }
+
   function openModal(title, desc, action, blocked) {
     document.getElementById('modal-title').textContent = title;
     document.getElementById('modal-desc').textContent = desc;
@@ -80,16 +96,18 @@
     document.getElementById('modal-blocked-btns').classList.toggle('hidden', !blocked_);
     document.getElementById('modal-overlay').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
-    document.querySelector('header').inert = true;
-    document.querySelector('main').inert = true;
-    const modalBtns = [...document.querySelectorAll('#modal-overlay button')].filter(b => !b.closest('.hidden'));
-    if (modalBtns[0]) modalBtns[0].focus();
+    document.querySelector('header').setAttribute('inert', '');
+    document.querySelector('main').setAttribute('inert', '');
+    document.addEventListener('keydown', _tabTrap);
+    const btns = _modalBtns();
+    if (btns[0]) btns[0].focus();
   }
   function closeModal() {
     document.getElementById('modal-overlay').classList.add('hidden');
     document.body.style.overflow = '';
-    document.querySelector('header').inert = false;
-    document.querySelector('main').inert = false;
+    document.querySelector('header').removeAttribute('inert');
+    document.querySelector('main').removeAttribute('inert');
+    document.removeEventListener('keydown', _tabTrap);
   }
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
 </script>

@@ -106,11 +106,15 @@
               {% csrf_token %}
               <input type="text" name="description" value="{{ debt.description }}" required
                 class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
-              <div class="flex gap-2 flex-wrap">
-                <input type="text" inputmode="decimal" name="amount" value="{{ debt.amount|floatformat:2 }}" required
-                  class="w-24 bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
-                <input type="date" name="date" value="{{ debt.date|date:'Y-m-d' }}" required
-                  class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
+              <div class="flex gap-2 flex-wrap items-start">
+                <div>
+                  <input type="text" inputmode="decimal" name="amount" value="{{ debt.amount|floatformat:2 }}" required
+                    class="w-24 bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
+                </div>
+                <div>
+                  <input type="date" name="date" value="{{ debt.date|date:'Y-m-d' }}" required
+                    class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
+                </div>
               </div>
               <div class="flex gap-3 mt-1">
                 <button type="submit"
@@ -137,11 +141,15 @@
         {% csrf_token %}
         <input type="text" name="description" placeholder="DESCRIÇÃO" required
           class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest placeholder:text-zinc-400 dark:placeholder:text-zinc-600 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
-        <div class="flex gap-2">
-          <input type="text" inputmode="decimal" name="amount" placeholder="VALOR" required
-            class="w-28 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest placeholder:text-zinc-400 dark:placeholder:text-zinc-600 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
-          <input type="date" name="date" required
-            class="flex-1 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
+        <div class="flex gap-2 items-start">
+          <div>
+            <input type="text" inputmode="decimal" name="amount" placeholder="VALOR" required
+              class="w-28 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest placeholder:text-zinc-400 dark:placeholder:text-zinc-600 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
+          </div>
+          <div class="flex-1">
+            <input type="date" name="date" required
+              class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
+          </div>
         </div>
         <div class="flex gap-2">
           <select name="credit_card"
@@ -208,11 +216,15 @@
           <li id="edit-payment-{{ payment.pk }}" class="hidden flex flex-col gap-1 py-2 border-b border-zinc-300 dark:border-zinc-700">
             <form method="post" action="{% url 'edit_payment' person.pk payment.pk %}" class="flex flex-col gap-1">
               {% csrf_token %}
-              <div class="flex gap-2">
-                <input type="text" inputmode="decimal" name="amount" value="{{ payment.amount|floatformat:2 }}" required
-                  class="w-24 bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
-                <input type="date" name="date" value="{{ payment.date|date:'Y-m-d' }}" required
-                  class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
+              <div class="flex gap-2 items-start">
+                <div>
+                  <input type="text" inputmode="decimal" name="amount" value="{{ payment.amount|floatformat:2 }}" required
+                    class="w-24 bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
+                </div>
+                <div>
+                  <input type="date" name="date" value="{{ payment.date|date:'Y-m-d' }}" required
+                    class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
+                </div>
               </div>
               <select name="method"
                 class="bg-[#f0f0f4] dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400">
@@ -242,11 +254,15 @@
       </summary>
       <form method="post" action="{% url 'add_payment' person.pk %}" class="mt-3 flex flex-col gap-2">
         {% csrf_token %}
-        <div class="flex gap-2">
-          <input type="text" inputmode="decimal" name="amount" placeholder="VALOR" required
-            class="w-28 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest placeholder:text-zinc-400 dark:placeholder:text-zinc-600 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
-          <input type="date" name="date" required
-            class="flex-1 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
+        <div class="flex gap-2 items-start">
+          <div>
+            <input type="text" inputmode="decimal" name="amount" placeholder="VALOR" required
+              class="w-28 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest placeholder:text-zinc-400 dark:placeholder:text-zinc-600 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
+          </div>
+          <div class="flex-1">
+            <input type="date" name="date" required
+              class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
+          </div>
         </div>
         <select name="method" required
           class="bg-[#f0f0f4] dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors">
