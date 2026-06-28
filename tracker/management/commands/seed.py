@@ -14,7 +14,7 @@ class Command(BaseCommand):
         password = getattr(settings, "ADMIN_PASSWORD", "changeme")
 
         user, created = User.objects.get_or_create(
-            username="admin",
+            username=email,
             defaults={"email": email, "is_staff": True, "is_superuser": True},
         )
         if created:
