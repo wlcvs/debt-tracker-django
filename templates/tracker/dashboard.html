@@ -94,19 +94,30 @@
           {% for card in credit_cards %}
             <li class="flex items-center justify-between py-2 border-b border-zinc-200 dark:border-zinc-900 text-xs">
               <span class="tracking-widest uppercase text-zinc-700 dark:text-zinc-300">{{ card.label }}</span>
-              <div class="flex gap-4">
+              <div class="flex gap-4 items-center">
                 <a href="{% url 'edit_credit_card' card.pk %}"
                   class="tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors">
                   Editar
                 </a>
-                <form method="post" action="{% url 'delete_credit_card' card.pk %}"
-                  onsubmit="return confirm('Excluir cartão {{ card.label }}?')">
-                  {% csrf_token %}
-                  <button type="submit"
+                <span id="action-card-{{ card.pk }}">
+                  <button onclick="showConfirm('card-{{ card.pk }}')"
                     class="tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
                     Excluir
                   </button>
-                </form>
+                </span>
+                <span id="confirm-card-{{ card.pk }}" class="hidden flex items-center gap-3">
+                  <span class="text-red-500">Excluir?</span>
+                  <form method="post" action="{% url 'delete_credit_card' card.pk %}" class="inline">
+                    {% csrf_token %}
+                    <button type="submit" class="tracking-widest uppercase text-red-500 hover:text-red-700 transition-colors cursor-pointer">
+                      Confirmar
+                    </button>
+                  </form>
+                  <button onclick="hideConfirm('card-{{ card.pk }}')"
+                    class="tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors cursor-pointer">
+                    Cancelar
+                  </button>
+                </span>
               </div>
             </li>
           {% endfor %}

@@ -21,8 +21,7 @@
   <div id="name-edit" class="hidden flex items-center gap-2 flex-wrap">
     <form method="post" action="{% url 'edit_person' person.pk %}" class="flex items-center gap-2 flex-wrap">
       {% csrf_token %}
-      <input type="text" name="name" value="{{ person.name }}" required autofocus
-        placeholder="NOME"
+      <input type="text" name="name" value="{{ person.name }}" required autofocus placeholder="NOME"
         class="bg-transparent border border-zinc-400 dark:border-zinc-600 px-2 py-1 text-sm tracking-widest uppercase text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-700 dark:focus:border-white transition-colors" />
       <button type="submit"
         class="text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
@@ -36,7 +35,7 @@
   </div>
 
   {# Actions #}
-  <div class="flex items-center gap-3 sm:gap-4 flex-wrap">
+  <div class="flex items-center gap-4 sm:gap-6 flex-wrap">
     <a href="/"
       class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors">
       ← Dashboard
@@ -45,14 +44,27 @@
       class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
       Copiar link público
     </button>
-    <form method="post" action="{% url 'delete_person' person.pk %}"
-      onsubmit="return confirm('Excluir {{ person.name }} e todos os dados? Esta ação é irreversível.')">
-      {% csrf_token %}
-      <button type="submit"
+
+    {# Delete person with inline confirm #}
+    <span id="action-person-{{ person.pk }}">
+      <button onclick="showConfirm('person-{{ person.pk }}')"
         class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
         Excluir devedor
       </button>
-    </form>
+    </span>
+    <span id="confirm-person-{{ person.pk }}" class="hidden flex items-center gap-3 flex-wrap">
+      <span class="text-xs text-red-500 tracking-wider">Excluir {{ person.name }} e todos os dados?</span>
+      <form method="post" action="{% url 'delete_person' person.pk %}" class="inline">
+        {% csrf_token %}
+        <button type="submit" class="text-xs tracking-widest uppercase text-red-500 hover:text-red-700 transition-colors cursor-pointer">
+          Confirmar
+        </button>
+      </form>
+      <button onclick="hideConfirm('person-{{ person.pk }}')"
+        class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors cursor-pointer">
+        Cancelar
+      </button>
+    </span>
   </div>
 </div>
 
@@ -67,30 +79,48 @@
       <ul class="flex flex-col">
         {% for debt in debts %}
           {# ── Display view ── #}
-          <li id="view-debt-{{ debt.pk }}" class="flex justify-between items-center text-xs py-2 border-b border-zinc-100 dark:border-zinc-900 gap-2 text-zinc-700 dark:text-zinc-300">
-            <div class="flex items-center gap-2 min-w-0">
-              <span class="truncate">{{ debt.description }}</span>
-              {% if debt.credit_card %}
-                <span class="shrink-0 text-[10px] tracking-widest uppercase border border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 px-1.5 py-0.5">
-                  {{ debt.credit_card.label }}
-                </span>
-              {% elif debt.method %}
-                <span class="shrink-0 text-[10px] tracking-widest uppercase border border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 px-1.5 py-0.5">
-                  {{ debt.get_method_display }}
-                </span>
-              {% endif %}
+          <li id="view-debt-{{ debt.pk }}" class="py-2 border-b border-zinc-100 dark:border-zinc-900">
+            <div class="flex justify-between items-center text-xs gap-2 text-zinc-700 dark:text-zinc-300">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="truncate">{{ debt.description }}</span>
+                {% if debt.credit_card %}
+                  <span class="shrink-0 text-[10px] tracking-widest uppercase border border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 px-1.5 py-0.5">
+                    {{ debt.credit_card.label }}
+                  </span>
+                {% elif debt.method %}
+                  <span class="shrink-0 text-[10px] tracking-widest uppercase border border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 px-1.5 py-0.5">
+                    {{ debt.get_method_display }}
+                  </span>
+                {% endif %}
+              </div>
+              <div class="flex items-center gap-4 shrink-0">
+                <span class="tracking-tight">R$ {{ debt.amount|floatformat:2 }}</span>
+                <div class="flex gap-3">
+                  <button onclick="editDebt({{ debt.pk }})"
+                    class="tracking-widest uppercase text-zinc-400 dark:text-zinc-700 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors cursor-pointer">
+                    Editar
+                  </button>
+                  <button onclick="showConfirm('debt-{{ debt.pk }}')"
+                    class="tracking-widest uppercase text-zinc-400 dark:text-zinc-700 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors cursor-pointer">
+                    Excluir
+                  </button>
+                </div>
+              </div>
             </div>
-            <div class="flex items-center gap-4 shrink-0">
-              <span class="tracking-tight">R$ {{ debt.amount|floatformat:2 }}</span>
-              <div class="flex gap-2">
-                <button onclick="editDebt({{ debt.pk }})"
-                  class="text-zinc-400 dark:text-zinc-700 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors cursor-pointer">✎</button>
-                <form method="post" action="{% url 'delete_debt' person.pk debt.pk %}"
-                  onsubmit="return confirm('Excluir esta dívida?')" class="inline">
+            {# Inline confirm #}
+            <div id="confirm-debt-{{ debt.pk }}" class="hidden mt-1.5">
+              <p class="text-xs text-red-500">Excluir "{{ debt.description }}"?</p>
+              <div class="flex gap-3 mt-1">
+                <form method="post" action="{% url 'delete_debt' person.pk debt.pk %}" class="inline">
                   {% csrf_token %}
-                  <button type="submit"
-                    class="text-zinc-400 dark:text-zinc-700 hover:text-red-500 transition-colors cursor-pointer">✕</button>
+                  <button type="submit" class="text-xs tracking-widest uppercase text-red-500 hover:text-red-700 transition-colors cursor-pointer">
+                    Confirmar
+                  </button>
                 </form>
+                <button onclick="hideConfirm('debt-{{ debt.pk }}')"
+                  class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors cursor-pointer">
+                  Cancelar
+                </button>
               </div>
             </div>
           </li>
@@ -125,8 +155,7 @@
 
     {# ── Add debt form ── #}
     <details class="group">
-      <summary
-        class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer list-none">
+      <summary class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer list-none">
         + Adicionar dívida
       </summary>
       <form method="post" action="{% url 'add_debt' person.pk %}" class="mt-3 flex flex-col gap-2">
@@ -141,14 +170,14 @@
         </div>
         <div class="flex gap-2">
           <select name="credit_card"
-            class="flex-1 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors">
+            class="flex-1 bg-[#f0f0f4] dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors">
             <option value="">— Cartão —</option>
             {% for card in debt_form.credit_card.field.queryset %}
               <option value="{{ card.pk }}">{{ card.label }}</option>
             {% endfor %}
           </select>
           <select name="method"
-            class="flex-1 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors">
+            class="flex-1 bg-[#f0f0f4] dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors">
             <option value="">— Método —</option>
             <option value="PIX">Pix</option>
             <option value="CASH">Dinheiro</option>
@@ -170,29 +199,45 @@
       <ul class="flex flex-col">
         {% for payment in payments %}
           {# ── Display view ── #}
-          <li id="view-payment-{{ payment.pk }}" class="text-xs py-2 border-b border-zinc-100 dark:border-zinc-900 text-zinc-600 dark:text-zinc-300">
-            <div class="flex justify-between items-center">
+          <li id="view-payment-{{ payment.pk }}" class="py-2 border-b border-zinc-100 dark:border-zinc-900">
+            <div class="flex justify-between items-center text-xs text-zinc-600 dark:text-zinc-300">
               <div>
                 <span class="text-zinc-500 dark:text-zinc-400">{{ payment.date }}</span>
+                <div class="mt-0.5">
+                  <span class="text-[10px] tracking-wider text-zinc-400 dark:text-zinc-600">
+                    {{ payment.get_method_display }}
+                  </span>
+                </div>
               </div>
-              <div class="flex items-center gap-4">
+              <div class="flex items-center gap-4 shrink-0">
                 <span class="tracking-tight">R$ {{ payment.amount|floatformat:2 }}</span>
-                <div class="flex gap-2">
+                <div class="flex gap-3">
                   <button onclick="editPayment({{ payment.pk }})"
-                    class="text-zinc-400 dark:text-zinc-700 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors cursor-pointer">✎</button>
-                  <form method="post" action="{% url 'delete_payment' person.pk payment.pk %}"
-                    onsubmit="return confirm('Excluir este pagamento?')" class="inline">
-                    {% csrf_token %}
-                    <button type="submit"
-                      class="text-zinc-400 dark:text-zinc-700 hover:text-red-500 transition-colors cursor-pointer">✕</button>
-                  </form>
+                    class="tracking-widest uppercase text-zinc-400 dark:text-zinc-700 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors cursor-pointer">
+                    Editar
+                  </button>
+                  <button onclick="showConfirm('payment-{{ payment.pk }}')"
+                    class="tracking-widest uppercase text-zinc-400 dark:text-zinc-700 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors cursor-pointer">
+                    Excluir
+                  </button>
                 </div>
               </div>
             </div>
-            <div class="mt-0.5">
-              <span class="text-[10px] tracking-wider text-zinc-400 dark:text-zinc-600">
-                {{ payment.get_method_display }}
-              </span>
+            {# Inline confirm #}
+            <div id="confirm-payment-{{ payment.pk }}" class="hidden mt-1.5">
+              <p class="text-xs text-red-500">Excluir pagamento de R$ {{ payment.amount|floatformat:2 }}?</p>
+              <div class="flex gap-3 mt-1">
+                <form method="post" action="{% url 'delete_payment' person.pk payment.pk %}" class="inline">
+                  {% csrf_token %}
+                  <button type="submit" class="text-xs tracking-widest uppercase text-red-500 hover:text-red-700 transition-colors cursor-pointer">
+                    Confirmar
+                  </button>
+                </form>
+                <button onclick="hideConfirm('payment-{{ payment.pk }}')"
+                  class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors cursor-pointer">
+                  Cancelar
+                </button>
+              </div>
             </div>
           </li>
 
@@ -207,7 +252,7 @@
                   class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
               </div>
               <select name="method"
-                class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400">
+                class="bg-[#f0f0f4] dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400">
                 <option value="PIX" {% if payment.method == "PIX" %}selected{% endif %}>Pix</option>
                 <option value="CASH" {% if payment.method == "CASH" %}selected{% endif %}>Dinheiro</option>
               </select>
@@ -229,8 +274,7 @@
 
     {# ── Add payment form ── #}
     <details class="group">
-      <summary
-        class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer list-none">
+      <summary class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer list-none">
         + Adicionar pagamento
       </summary>
       <form method="post" action="{% url 'add_payment' person.pk %}" class="mt-3 flex flex-col gap-2">
@@ -242,7 +286,7 @@
             class="flex-1 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
         </div>
         <select name="method" required
-          class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors">
+          class="bg-[#f0f0f4] dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors">
           <option value="">— Método —</option>
           <option value="PIX">Pix</option>
           <option value="CASH">Dinheiro</option>
@@ -282,7 +326,12 @@
   }
 
   function copyPublicLink(url) {
-    navigator.clipboard.writeText(url).then(() => alert('Link copiado!'));
+    navigator.clipboard.writeText(url).then(() => {
+      const btn = event.target;
+      const original = btn.textContent;
+      btn.textContent = 'Link copiado!';
+      setTimeout(() => btn.textContent = original, 2000);
+    });
   }
 </script>
 {% endblock %}
