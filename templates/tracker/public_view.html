@@ -100,7 +100,7 @@
           @keydown.escape.window="showDebtFilters = false">
           <div class="flex items-center justify-between mb-3">
             <p class="text-xs tracking-[0.25em] uppercase text-zinc-400 dark:text-zinc-500">Dívidas</p>
-            <button type="button" @click="showDebtFilters = !showDebtFilters"
+            <button type="button" @click="showDebtFilters = !showDebtFilters; if (!showDebtFilters) { debtSearch = ''; debtDateFrom = ''; debtDateTo = ''; debtAmountMin = ''; debtAmountMax = '' }"
               :class="(showDebtFilters || debtSearch || debtDateFrom || debtDateTo || debtAmountMin || debtAmountMax)
                 ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-400 dark:text-zinc-600'"
               class="text-[10px] tracking-widest uppercase hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors">
@@ -199,7 +199,7 @@
           @keydown.escape.window="showPaymentFilters = false">
           <div class="flex items-center justify-between mb-3">
             <p class="text-xs tracking-[0.25em] uppercase text-zinc-400 dark:text-zinc-500">Pagamentos</p>
-            <button type="button" @click="showPaymentFilters = !showPaymentFilters"
+            <button type="button" @click="showPaymentFilters = !showPaymentFilters; if (!showPaymentFilters) { paymentSearch = ''; paymentDateFrom = ''; paymentDateTo = ''; paymentAmountMin = ''; paymentAmountMax = '' }"
               :class="(showPaymentFilters || paymentSearch || paymentDateFrom || paymentDateTo || paymentAmountMin || paymentAmountMax)
                 ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-400 dark:text-zinc-600'"
               class="text-[10px] tracking-widest uppercase hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors">
