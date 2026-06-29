@@ -39,10 +39,14 @@
     },
 
     matchDebt(title, desc, method, date, amount, q, dateFrom, dateTo, amtMin, amtMax) {
-      const trimQ = q.toLowerCase().trim();
-      if (trimQ) {
+      if (q.trim()) {
+        const needle = q.trim().toLowerCase();
         const amtStr = amount.toFixed(2).replace('.', ',');
-        if (!(title + ' ' + desc + ' ' + method + ' ' + amtStr).toLowerCase().includes(trimQ)) return false;
+        const hit = title.toLowerCase().includes(needle)
+          || desc.toLowerCase().includes(needle)
+          || method.toLowerCase().includes(needle)
+          || amtStr.includes(needle);
+        if (!hit) return false;
       }
       if (dateFrom && date < dateFrom) return false;
       if (dateTo && date > dateTo) return false;
@@ -53,10 +57,13 @@
     },
 
     matchPayment(desc, method, date, amount, q, dateFrom, dateTo, amtMin, amtMax) {
-      const trimQ = q.toLowerCase().trim();
-      if (trimQ) {
+      if (q.trim()) {
+        const needle = q.trim().toLowerCase();
         const amtStr = amount.toFixed(2).replace('.', ',');
-        if (!(desc + ' ' + method + ' ' + amtStr).toLowerCase().includes(trimQ)) return false;
+        const hit = desc.toLowerCase().includes(needle)
+          || method.toLowerCase().includes(needle)
+          || amtStr.includes(needle);
+        if (!hit) return false;
       }
       if (dateFrom && date < dateFrom) return false;
       if (dateTo && date > dateTo) return false;

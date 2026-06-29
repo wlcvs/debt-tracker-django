@@ -69,7 +69,7 @@ docker-compose.yml
 /dashboard/person/<uuid>/  → person detail
 /dashboard/person/<uuid>/edit|delete/
 /dashboard/person/<uuid>/debt/add/
-/dashboard/person/<uuid>/debt/<id>/edit|delete/
+/dashboard/person/<uuid>/debt/<id>/edit|delete|toggle-paid/
 /dashboard/person/<uuid>/payment/add/
 /dashboard/person/<uuid>/payment/<id>/edit|delete/
 /dashboard/credit-card/add|edit|delete/
@@ -81,7 +81,7 @@ docker-compose.yml
 User       — Django built-in
 Person     — id (UUID, serves as access code), name, user FK
 CreditCard — label, user FK
-Debt       — amount (Decimal 10,2), description (optional), date, credit_card FK (nullable), method (PIX|CASH, optional)
+Debt       — amount (Decimal 10,2), title (required), description (optional), date, credit_card FK (nullable), method (PIX|CASH, optional), paid (bool, default False)
 Payment    — amount (Decimal 10,2), description (optional), date, method (PIX|CASH, required)
 ```
 
@@ -90,6 +90,8 @@ Payment    — amount (Decimal 10,2), description (optional), date, method (PIX|
 - **Never persist derived data** — balances are always computed at runtime.
 - **`method` on Debt** is optional (not every debt is PIX/CASH — it may be on a card).
 - **`method` on Payment** is PIX or CASH, always required.
+- **`title` on Debt** is required (CharField max_length=255).
+- **`paid` on Debt** toggles whether the debt counts toward the balance (excluded from sum when True).
 - **`description` on both Debt and Payment** is optional (blank=True, default="").
 - **Credit cards with linked debts cannot be deleted.**
 - **Design:** HUD/monochromatic (grayscale, no accent colors). Light background `#f0f0f4`. Dark/light toggle. **UI in pt-BR.**
@@ -111,8 +113,11 @@ Payment    — amount (Decimal 10,2), description (optional), date, method (PIX|
 - Focus trap in modals: `x-trap.inert.noscroll` from `@alpinejs/focus`.
 - Detail modals via `x-teleport="body"` — escapes parent stacking contexts while keeping Alpine data scope.
 - Custom select: hidden `<input type="hidden" :value="method">` + Alpine dropdown + `@submit` validation (required because hidden inputs don't trigger native `required`).
-- Bottom sheet on mobile (`items-end`), centered on desktop (`sm:items-center`).
+- Modals are always centered (`items-center p-4`), on all screen sizes.
 - Share button: `navigator.share()` on HTTPS, `document.execCommand('copy')` fallback for HTTP.
+- Collapsible filter panels: put `@click.outside` and `@keydown.escape.window` on a **wrapper div** that contains both the toggle button and the panel — never on the panel alone, or the toggle click immediately re-closes it.
+- Incremental filtering with `x-show`: pass reactive state variables as explicit arguments to the filter function so Alpine tracks them as dependencies. Accessing them only inside the function body via `this.x` is not reliable.
+- Number filters: when the user omits a decimal point, compare by `Math.floor(amount)` to avoid excluding e.g. `222.70` when the input is `222`.
 
 ## References
 
