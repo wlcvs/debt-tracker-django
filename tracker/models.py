@@ -47,6 +47,21 @@ class Debt(models.Model):
         return f"{self.person} — R$ {self.amount}"
 
 
+class Statement(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="statements")
+    bank = models.CharField(max_length=100)
+    filename = models.CharField(max_length=255)
+    pdf_data = models.BinaryField()
+    transaction_count = models.IntegerField(default=0)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-uploaded_at"]
+
+    def __str__(self):
+        return f"{self.bank} — {self.filename}"
+
+
 class Payment(models.Model):
     class Method(models.TextChoices):
         PIX = "PIX", "Pix"

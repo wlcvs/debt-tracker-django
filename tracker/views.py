@@ -13,7 +13,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from .forms import CreditCardForm, DebtForm, PaymentForm, PersonForm
-from .models import CreditCard, Debt, Payment, Person
+from .models import CreditCard, Debt, Payment, Person, Statement
 
 
 class AppLoginView(LoginView):
@@ -78,6 +78,8 @@ def dashboard(request):
         cls=DjangoJSONEncoder,
     )
 
+    statements = Statement.objects.filter(user=request.user).defer("pdf_data")
+
     return render(request, "tracker/dashboard.html", {
         "people": people,
         "people_json": people_json,
@@ -85,6 +87,7 @@ def dashboard(request):
         "credit_cards": credit_cards,
         "form": form,
         "card_form": CreditCardForm(),
+        "statements": statements,
     })
 
 
@@ -289,7 +292,18 @@ def import_statement(request):
 
     try:
         from .importers import detect_and_parse
+        pdf_bytes = pdf_file.read()
+        pdf_file.seek(0)
         bank, transactions = detect_and_parse(pdf_file)
+
+        Statement.objects.create(
+            user=request.user,
+            bank=bank,
+            filename=pdf_file.name,
+            pdf_data=pdf_bytes,
+            transaction_count=len(transactions),
+        )
+
         return JsonResponse({
             "bank": bank,
             "transactions": [
@@ -346,6 +360,33 @@ def save_imported(request):
         created += 1
 
     return JsonResponse({"created": created})
+
+
+@login_required
+def reopen_statement(request, stmt_id):
+    import io
+    stmt = get_object_or_404(Statement, pk=stmt_id, user=request.user)
+    from .importers import detect_and_parse
+    pdf_file = io.BytesIO(bytes(stmt.pdf_data))
+    try:
+        bank, transactions = detect_and_parse(pdf_file)
+        return JsonResponse({
+            "bank": bank,
+            "transactions": [
+                {"index": i, **t.to_dict()}
+                for i, t in enumerate(transactions)
+            ],
+        })
+    except Exception as e:
+        return JsonResponse({"error": f"Erro ao reabrir extrato: {e}"}, status=400)
+
+
+@login_required
+@require_POST
+def delete_statement(request, stmt_id):
+    stmt = get_object_or_404(Statement, pk=stmt_id, user=request.user)
+    stmt.delete()
+    return redirect("dashboard")
 
 
 # ── Public landing ─────────────────────────────────────────────────────────────

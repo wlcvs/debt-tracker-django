@@ -150,10 +150,38 @@
 
 </div>
 
+{# ── Extratos salvos ── #}
+{% if statements %}
+<section>
+  <p class="text-[10px] tracking-[0.3em] text-zinc-400 dark:text-zinc-500 uppercase mb-3">Extratos salvos</p>
+  <div class="flex flex-col divide-y divide-zinc-200 dark:divide-zinc-800 border border-zinc-200 dark:border-zinc-800">
+    {% for stmt in statements %}
+    <div class="flex items-center gap-4 px-4 py-3 text-xs">
+      <span class="tracking-widest uppercase text-zinc-700 dark:text-zinc-300 min-w-24">{{ stmt.bank }}</span>
+      <span class="flex-1 truncate text-zinc-500 dark:text-zinc-400">{{ stmt.filename }}</span>
+      <span class="tabular-nums text-zinc-400 dark:text-zinc-600 whitespace-nowrap">{{ stmt.transaction_count }} transaç{{ stmt.transaction_count|pluralize:"ão,ões" }}</span>
+      <span class="tabular-nums text-zinc-400 dark:text-zinc-600 whitespace-nowrap">{{ stmt.uploaded_at|date:"d/m/Y H:i" }}</span>
+      <button
+        onclick="window.dispatchEvent(new CustomEvent('reopen-statement', { detail: { url: '{% url "reopen_statement" stmt.id %}' } }))"
+        class="text-[10px] tracking-widest uppercase text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors whitespace-nowrap cursor-pointer">
+        Reabrir
+      </button>
+      <button
+        onclick="Alpine.store('modal').open('Excluir extrato', '&quot;{{ stmt.filename|escapejs }}&quot; será excluído permanentemente.', '{% url "delete_statement" stmt.id %}')"
+        class="text-[10px] tracking-widest uppercase text-zinc-400 hover:text-red-500 transition-colors whitespace-nowrap cursor-pointer">
+        Excluir
+      </button>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
 {# ── Import modal ── #}
 {{ people_json|json_script:"import-modal-people" }}
 <div x-data="importModal('{{ csrf_token }}')"
      @open-import.window="open = true"
+     @reopen-statement.window="reopenSaved($event.detail.url)"
      @keydown.escape.window="if (open) { open = false; reset(); }">
 
   <template x-teleport="body">
@@ -375,6 +403,29 @@
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || 'Erro ao processar o PDF.');
           if (!data.transactions.length) throw new Error('Nenhuma transação encontrada neste PDF.');
+          this.bank = data.bank;
+          this.transactions = data.transactions.map(t => ({
+            ...t,
+            person_id: '',
+            type: 'ignore',
+          }));
+          this.step = 'review';
+        } catch(e) {
+          this.error = e.message;
+          this.step = 'upload';
+        }
+      },
+
+      async reopenSaved(url) {
+        this.open = true;
+        this.step = 'processing';
+        this.bank = '';
+        this.error = '';
+        try {
+          const res = await fetch(url);
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Erro ao reabrir extrato.');
+          if (!data.transactions.length) throw new Error('Nenhuma transação encontrada neste extrato.');
           this.bank = data.bank;
           this.transactions = data.transactions.map(t => ({
             ...t,
