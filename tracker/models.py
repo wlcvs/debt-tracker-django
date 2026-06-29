@@ -37,7 +37,7 @@ class Debt(models.Model):
         CreditCard, on_delete=models.SET_NULL, null=True, blank=True, related_name="debts"
     )
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    description = models.CharField(max_length=500)
+    description = models.CharField(max_length=500, blank=True, default="")
     date = models.DateField()
     method = models.CharField(max_length=4, choices=Method.choices, null=True, blank=True)
 
@@ -52,6 +52,7 @@ class Payment(models.Model):
 
     person = models.ForeignKey(Person, on_delete=models.CASCADE, related_name="payments")
     amount = models.DecimalField(max_digits=10, decimal_places=2)
+    description = models.CharField(max_length=500, blank=True, default="")
     date = models.DateField()
     method = models.CharField(max_length=4, choices=Method.choices, default=Method.CASH)
 

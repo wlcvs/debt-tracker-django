@@ -1,18 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Minha Dívida — Debt Tracker{% endblock %}
-{% block theme_toggle %}{% endblock %}
 
-{% block body_class %}min-h-screen bg-[#f0f0f4] dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100{% endblock %}
+{% block body_class %}min-h-screen flex flex-col bg-[#f0f0f4] dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100{% endblock %}
 
 {% block body %}
-<header class="bg-white dark:bg-zinc-950 border-b border-zinc-400 dark:border-zinc-800 px-6 py-4 flex items-center justify-between">
-  <h1 class="text-base sm:text-sm tracking-widest uppercase text-zinc-900 dark:text-white">Debt Tracker</h1>
-  <button x-data @click="$store.theme.toggle()" x-text="$store.theme.dark ? 'Tema claro' : 'Tema escuro'"
-    class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
-  </button>
-</header>
-
-<main class="max-w-md mx-auto px-4 sm:px-8 py-6 sm:py-8">
+<main class="flex-1 max-w-md mx-auto w-full px-4 sm:px-8 py-6 sm:py-8">
   <h2 class="text-xl tracking-widest uppercase text-zinc-900 dark:text-white mb-4 sm:mb-6">Minha Dívida</h2>
 
   <section class="-mx-4 sm:mx-0">
@@ -32,7 +24,7 @@
           {% for debt in debts %}
             <li class="flex justify-between text-xs py-1.5 text-zinc-700 dark:text-zinc-300">
               <span class="truncate mr-4">
-                {{ debt.description }}
+                {% if debt.description %}{{ debt.description }}{% endif %}
                 {% if debt.credit_card or debt.method %}
                   <span class="ml-2 text-zinc-400 dark:text-zinc-600">
                     {% if debt.credit_card %}{{ debt.credit_card.label }}{% else %}{{ debt.get_method_display }}{% endif %}
@@ -58,13 +50,14 @@
           {% for payment in payments %}
             <li class="text-xs py-1.5 text-zinc-600 dark:text-zinc-300">
               <div class="flex justify-between">
+                <span class="text-zinc-700 dark:text-zinc-300 tracking-wide">R$ {{ payment.amount|floatformat:2 }}</span>
                 <span class="text-zinc-500 dark:text-zinc-400">{{ payment.date }}</span>
-                <span class="tracking-tight">R$ {{ payment.amount|floatformat:2 }}</span>
               </div>
-              <div class="mt-0.5">
-                <span class="text-[10px] tracking-wider text-zinc-400 dark:text-zinc-600">
-                  {{ payment.get_method_display }}
-                </span>
+              <div class="mt-0.5 flex items-center gap-2">
+                <span class="text-[10px] tracking-wider text-zinc-400 dark:text-zinc-600">{{ payment.get_method_display }}</span>
+                {% if payment.description %}
+                  <span class="text-[10px] tracking-wider text-zinc-400 dark:text-zinc-600">· {{ payment.description }}</span>
+                {% endif %}
               </div>
             </li>
           {% endfor %}
@@ -73,5 +66,4 @@
     </div>
   </section>
 </main>
-
 {% endblock %}

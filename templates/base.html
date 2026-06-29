@@ -35,10 +35,13 @@
   </style>
 </head>
 <body class="{% block body_class %}{% endblock %}">
-  {% block theme_toggle %}
-  <button x-data @click="$store.theme.toggle()" x-text="$store.theme.dark ? 'Tema claro' : 'Tema escuro'"
-    class="fixed top-4 right-5 text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer z-10">
-  </button>
+  {% block header %}
+  <header class="bg-white dark:bg-zinc-950 border-b border-zinc-400 dark:border-zinc-800 px-6 py-4 flex items-center justify-between">
+    <span class="text-base sm:text-sm tracking-widest uppercase text-zinc-900 dark:text-white">Debt Tracker</span>
+    <button x-data @click="$store.theme.toggle()" x-text="$store.theme.dark ? 'Tema claro' : 'Tema escuro'"
+      class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+    </button>
+  </header>
   {% endblock %}
   {% block body %}{% endblock %}
   <script>
@@ -69,7 +72,6 @@
       });
     });
 
-    // Custom form validation — replaces browser native bubbles
     document.addEventListener('invalid', (e) => {
       e.preventDefault();
       const el = e.target;

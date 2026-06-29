@@ -34,11 +34,12 @@ def test_delete_debt(auth_client, person, debt):
 
 
 @pytest.mark.django_db
-def test_debt_requires_description(auth_client, person):
+def test_debt_description_is_optional(auth_client, person):
     response = auth_client.post(f"/dashboard/person/{person.pk}/debt/add/", {
         "amount": "100.00",
         "description": "",
         "date": date.today().isoformat(),
+        "payment_method": "PIX",
     })
     assert response.status_code == 302
-    assert not person.debts.exists()
+    assert person.debts.filter(description="").exists()

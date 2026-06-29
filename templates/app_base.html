@@ -1,10 +1,8 @@
 {% extends "base.html" %}
 
-{% block body_class %}min-h-screen bg-[#f0f0f4] dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100{% endblock %}
+{% block body_class %}min-h-screen flex flex-col bg-[#f0f0f4] dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100{% endblock %}
 
-{% block theme_toggle %}{% endblock %}
-
-{% block body %}
+{% block header %}
 <header class="bg-white dark:bg-zinc-950 border-b border-zinc-400 dark:border-zinc-800 px-6 py-4 flex items-center justify-between">
   {% if request.path == '/dashboard/' %}
     <span class="text-base sm:text-sm tracking-widest uppercase text-zinc-900 dark:text-white">Debt Tracker</span>
@@ -26,8 +24,10 @@
     {% endif %}
   </div>
 </header>
+{% endblock %}
 
-<main class="max-w-4xl mx-auto px-4 sm:px-8 py-8">
+{% block body %}
+<main class="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-8 py-8">
   {% if messages %}
     {% for message in messages %}
       <div class="mb-6 text-xs tracking-wider text-zinc-500 border border-zinc-300 dark:border-zinc-700 px-3 py-2">
@@ -49,7 +49,6 @@
        class="relative bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 max-w-sm w-full">
     <p x-text="$store.modal.title" class="text-xs tracking-[0.2em] uppercase text-zinc-900 dark:text-white mb-2"></p>
     <p x-text="$store.modal.desc" class="text-xs text-zinc-500 dark:text-zinc-400 mb-6 leading-relaxed"></p>
-    {# Normal: Excluir + Cancelar #}
     <div x-show="!$store.modal.blocked" class="flex gap-3">
       <form method="post" :action="$store.modal.action">
         {% csrf_token %}
@@ -63,7 +62,6 @@
         Cancelar
       </button>
     </div>
-    {# Blocked: só Fechar #}
     <div x-show="$store.modal.blocked" class="flex justify-end">
       <button @click="$store.modal.close()"
         class="border border-zinc-300 dark:border-zinc-700 px-5 py-2 text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">

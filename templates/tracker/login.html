@@ -1,18 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Entrar — Debt Tracker{% endblock %}
-{% block theme_toggle %}{% endblock %}
 
 {% block body_class %}min-h-screen flex flex-col bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100{% endblock %}
 
 {% block body %}
-<header class="px-6 py-4 flex items-center justify-between border-b border-zinc-100 dark:border-zinc-900">
-  <h1 class="text-base sm:text-sm tracking-widest uppercase text-zinc-900 dark:text-white">Debt Tracker</h1>
-  <button x-data @click="$store.theme.toggle()" x-text="$store.theme.dark ? 'Tema claro' : 'Tema escuro'"
-    class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
-  </button>
-</header>
-
-<main class="flex-1 flex items-center justify-center px-4">
+<main class="flex-1 flex items-center justify-center px-4 -mt-24">
   <div class="w-full max-w-sm">
     <h2 class="text-xs tracking-[0.3em] uppercase text-zinc-400 dark:text-zinc-500 mb-8">Acesso administrativo</h2>
     <form method="post" class="flex flex-col gap-4">

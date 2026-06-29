@@ -48,6 +48,7 @@ class DebtForm(forms.ModelForm):
             self.fields["credit_card"].queryset = CreditCard.objects.filter(user=user)
         self.fields["credit_card"].required = False
         self.fields["method"].required = False
+        self.fields["description"].required = False
 
 
 class PaymentForm(forms.ModelForm):
@@ -58,8 +59,13 @@ class PaymentForm(forms.ModelForm):
 
     class Meta:
         model = Payment
-        fields = ["amount", "date", "method"]
+        fields = ["amount", "description", "date", "method"]
         widgets = {
+            "description": forms.TextInput(attrs={"class": INPUT_CLASS}),
             "date": forms.DateInput(attrs={"class": INPUT_CLASS, "type": "date"}),
             "method": forms.Select(attrs={"class": SELECT_CLASS}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["description"].required = False
