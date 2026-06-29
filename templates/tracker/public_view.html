@@ -48,17 +48,12 @@
       {% else %}
         <ul class="flex flex-col">
           {% for payment in payments %}
-            <li class="text-xs py-1.5 text-zinc-600 dark:text-zinc-300">
-              <div class="flex justify-between">
-                <span class="text-zinc-700 dark:text-zinc-300 tracking-wide">R$ {{ payment.amount|floatformat:2 }}</span>
-                <span class="text-zinc-500 dark:text-zinc-400">{{ payment.date }}</span>
-              </div>
-              <div class="mt-0.5 flex items-center gap-2">
-                <span class="text-[10px] tracking-wider text-zinc-400 dark:text-zinc-600">{{ payment.get_method_display }}</span>
-                {% if payment.description %}
-                  <span class="text-[10px] tracking-wider text-zinc-400 dark:text-zinc-600">· {{ payment.description }}</span>
-                {% endif %}
-              </div>
+            <li class="flex justify-between text-xs py-1.5 text-zinc-700 dark:text-zinc-300">
+              <span class="truncate mr-4">
+                R$ {{ payment.amount|floatformat:2 }}
+                <span class="ml-2 text-zinc-400 dark:text-zinc-600">{{ payment.get_method_display }}{% if payment.description %} · {{ payment.description }}{% endif %}</span>
+              </span>
+              <span class="shrink-0 tracking-tight text-zinc-400 dark:text-zinc-600">{{ payment.date }}</span>
             </li>
           {% endfor %}
         </ul>
