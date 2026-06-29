@@ -82,11 +82,18 @@
       }
     });
 
-    // Clear all errors on any click outside an input/select/textarea
+    // Click outside: first clears errors, second closes open <details>
     document.addEventListener('click', (e) => {
       if (e.target.matches('input, select, textarea')) return;
-      document.querySelectorAll('.field-error').forEach(err => err.remove());
-      document.querySelectorAll('input, select, textarea').forEach(el => { if (el._errEl) el._errEl = null; });
+      const errors = document.querySelectorAll('.field-error');
+      if (errors.length > 0) {
+        errors.forEach(err => err.remove());
+        document.querySelectorAll('input, select, textarea').forEach(el => { if (el._errEl) el._errEl = null; });
+        return;
+      }
+      document.querySelectorAll('details[open]').forEach(d => {
+        if (!d.contains(e.target)) d.removeAttribute('open');
+      });
     });
 
     function resetForm(form) {
