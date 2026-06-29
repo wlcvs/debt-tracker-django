@@ -11,7 +11,7 @@ def test_public_view_accessible_without_login(client, person, debt, payment):
 @pytest.mark.django_db
 def test_public_view_shows_debts_and_payments(client, person, debt, payment):
     response = client.get(f"/public/{person.pk}/")
-    assert debt.description.encode() in response.content
+    assert debt.title.encode() in response.content
     assert b"Pix" in response.content
 
 

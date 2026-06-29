@@ -4,30 +4,132 @@
 {% block body_class %}min-h-screen flex flex-col bg-[#f0f0f4] dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100{% endblock %}
 
 {% block body %}
-<main class="flex-1 max-w-md mx-auto w-full px-4 sm:px-8 py-6 sm:py-8">
+<main class="flex-1 max-w-md mx-auto w-full px-4 sm:px-8 py-6 sm:py-8"
+  x-data="{
+    search: '',
+    dateFrom: '',
+    dateTo: '',
+    amountMin: '',
+    amountMax: '',
+    showFilters: false,
+    months: 12,
+    balance: {{ balance }},
+    get monthly() {
+      const m = parseInt(this.months);
+      if (!m || m <= 0 || this.balance <= 0) return null;
+      return (this.balance / m).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    },
+    matchDebt(title, desc, method, date, amount) {
+      const q = this.search.toLowerCase().trim();
+      if (q && !(title + ' ' + desc + ' ' + method).toLowerCase().includes(q)) return false;
+      if (this.dateFrom && date < this.dateFrom) return false;
+      if (this.dateTo && date > this.dateTo) return false;
+      const n = parseFloat(amount);
+      const mn = this.amountMin ? parseFloat(this.amountMin.replace(',', '.')) : null;
+      const mx = this.amountMax ? parseFloat(this.amountMax.replace(',', '.')) : null;
+      if (mn !== null && !isNaN(mn) && n < mn) return false;
+      if (mx !== null && !isNaN(mx) && n > mx) return false;
+      return true;
+    },
+    matchPayment(desc, method, date, amount) {
+      const q = this.search.toLowerCase().trim();
+      if (q && !(desc + ' ' + method).toLowerCase().includes(q)) return false;
+      if (this.dateFrom && date < this.dateFrom) return false;
+      if (this.dateTo && date > this.dateTo) return false;
+      const n = parseFloat(amount);
+      const mn = this.amountMin ? parseFloat(this.amountMin.replace(',', '.')) : null;
+      const mx = this.amountMax ? parseFloat(this.amountMax.replace(',', '.')) : null;
+      if (mn !== null && !isNaN(mn) && n < mn) return false;
+      if (mx !== null && !isNaN(mx) && n > mx) return false;
+      return true;
+    }
+  }">
+
   <section class="-mx-4 sm:mx-0">
-    <div class="px-5 pt-4 pb-4">
+    <div class="px-5 pt-4 pb-6">
       <h2 class="text-xl tracking-widest uppercase text-zinc-900 dark:text-white mb-4 sm:mb-6">Minha Dívida</h2>
 
-      <div class="flex items-baseline justify-between gap-4 mb-4">
+      <div class="flex items-baseline justify-between gap-4 mb-5">
         <h3 class="text-lg tracking-widest uppercase text-zinc-900 dark:text-white">{{ person.name }}</h3>
         <p class="text-lg tracking-tight text-zinc-900 dark:text-white shrink-0">R$ {{ balance|floatformat:2 }}</p>
       </div>
 
-      {# Debts #}
+      {# ── Filter bar ── #}
+      <div class="mb-6 flex flex-col gap-2">
+        <div class="flex gap-2">
+          <input
+            type="search"
+            x-model.debounce.200ms="search"
+            placeholder="Pesquisar..."
+            class="flex-1 min-w-0 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-wider placeholder:text-zinc-400 dark:placeholder:text-zinc-600 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
+          <button
+            type="button"
+            @click="showFilters = !showFilters"
+            :class="(showFilters || dateFrom || dateTo || amountMin || amountMax)
+              ? 'border-zinc-600 dark:border-zinc-400 text-zinc-700 dark:text-zinc-300'
+              : 'border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-600'"
+            class="shrink-0 px-3 py-2 border text-xs tracking-widest uppercase hover:border-zinc-600 hover:text-zinc-700 dark:hover:border-zinc-400 dark:hover:text-zinc-300 transition-colors">
+            Filtros
+          </button>
+        </div>
+
+        <div x-show="showFilters" x-cloak class="flex flex-col gap-2">
+          <div class="flex gap-2">
+            <div class="flex-1">
+              <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">De</p>
+              <input type="date" x-model="dateFrom"
+                class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 text-xs text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
+            </div>
+            <div class="flex-1">
+              <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Até</p>
+              <input type="date" x-model="dateTo"
+                class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 text-xs text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <div class="flex-1">
+              <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Valor mín.</p>
+              <input type="text" inputmode="decimal" x-model="amountMin" placeholder="0,00"
+                class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 text-xs placeholder:text-zinc-300 dark:placeholder:text-zinc-700 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
+            </div>
+            <div class="flex-1">
+              <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Valor máx.</p>
+              <input type="text" inputmode="decimal" x-model="amountMax" placeholder="0,00"
+                class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 text-xs placeholder:text-zinc-300 dark:placeholder:text-zinc-700 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
+            </div>
+          </div>
+          <button type="button"
+            @click="search = ''; dateFrom = ''; dateTo = ''; amountMin = ''; amountMax = '';"
+            class="self-start text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors">
+            Limpar filtros
+          </button>
+        </div>
+      </div>
+
+      {# ── Debts ── #}
       <p class="text-xs tracking-[0.25em] uppercase text-zinc-400 dark:text-zinc-500 mb-3">Dívidas</p>
       {% if not debts %}
         <p class="text-xs text-zinc-400 dark:text-zinc-600 mb-6">Nenhuma dívida registrada.</p>
       {% else %}
         <ul class="flex flex-col mb-6">
           {% for debt in debts %}
-            <li class="flex justify-between text-xs py-1.5 text-zinc-700 dark:text-zinc-300">
+            <li class="flex justify-between text-xs py-1.5 text-zinc-700 dark:text-zinc-300"
+              x-show="matchDebt(
+                '{{ debt.title|escapejs }}',
+                '{{ debt.description|escapejs }}',
+                '{% if debt.credit_card %}{{ debt.credit_card.label|escapejs }}{% elif debt.method %}{{ debt.get_method_display|escapejs }}{% endif %}',
+                '{{ debt.date|date:'Y-m-d' }}',
+                {{ debt.amount }}
+              )">
               <span class="truncate mr-4">
-                {% if debt.description %}{{ debt.description }}{% endif %}
+                {{ debt.title }}
                 {% if debt.credit_card or debt.method %}
-                  <span class="ml-2 text-zinc-400 dark:text-zinc-600">
+                  <span class="ml-1.5 text-zinc-400 dark:text-zinc-600">
                     {% if debt.credit_card %}{{ debt.credit_card.label }}{% else %}{{ debt.get_method_display }}{% endif %}
                   </span>
+                {% endif %}
+                {% if debt.description %}
+                  <span class="block text-[10px] text-zinc-400 dark:text-zinc-600 mt-0.5">{{ debt.description }}</span>
                 {% endif %}
               </span>
               <span class="shrink-0 tracking-tight">R$ {{ debt.amount|floatformat:2 }}</span>
@@ -38,14 +140,20 @@
 
       <div class="border-t border-zinc-300 dark:border-zinc-700 mb-4"></div>
 
-      {# Payments #}
+      {# ── Payments ── #}
       <p class="text-xs tracking-[0.25em] uppercase text-zinc-400 dark:text-zinc-500 mb-3">Pagamentos</p>
       {% if not payments %}
-        <p class="text-xs text-zinc-400 dark:text-zinc-600">Nenhum pagamento registrado.</p>
+        <p class="text-xs text-zinc-400 dark:text-zinc-600 mb-6">Nenhum pagamento registrado.</p>
       {% else %}
-        <ul class="flex flex-col">
+        <ul class="flex flex-col mb-6">
           {% for payment in payments %}
-            <li class="py-1.5">
+            <li class="py-1.5"
+              x-show="matchPayment(
+                '{{ payment.description|escapejs }}',
+                '{{ payment.get_method_display|escapejs }}',
+                '{{ payment.date|date:'Y-m-d' }}',
+                {{ payment.amount }}
+              )">
               <div class="flex justify-between text-xs text-zinc-700 dark:text-zinc-300">
                 <span>R$ {{ payment.amount|floatformat:2 }} <span class="ml-1 text-zinc-400 dark:text-zinc-600">{{ payment.get_method_display }}</span></span>
                 <span class="shrink-0 text-zinc-400 dark:text-zinc-600 ml-4">{{ payment.date }}</span>
@@ -57,6 +165,40 @@
           {% endfor %}
         </ul>
       {% endif %}
+
+      {# ── Monthly calculator ── #}
+      {% if balance > 0 %}
+      <div class="border-t border-zinc-300 dark:border-zinc-700 pt-5">
+        <p class="text-xs tracking-[0.25em] uppercase text-zinc-400 dark:text-zinc-500 mb-4">Quanto pagar por mês?</p>
+        <div class="flex gap-2 mb-4 flex-wrap">
+          <button type="button" @click="months = 3"
+            :class="months == 3 ? 'border-zinc-600 dark:border-zinc-400 text-zinc-700 dark:text-zinc-300' : 'border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-600'"
+            class="px-4 py-2 border text-xs tracking-widest hover:border-zinc-600 hover:text-zinc-700 dark:hover:border-zinc-400 dark:hover:text-zinc-300 transition-colors">
+            3x
+          </button>
+          <button type="button" @click="months = 6"
+            :class="months == 6 ? 'border-zinc-600 dark:border-zinc-400 text-zinc-700 dark:text-zinc-300' : 'border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-600'"
+            class="px-4 py-2 border text-xs tracking-widest hover:border-zinc-600 hover:text-zinc-700 dark:hover:border-zinc-400 dark:hover:text-zinc-300 transition-colors">
+            6x
+          </button>
+          <button type="button" @click="months = 12"
+            :class="months == 12 ? 'border-zinc-600 dark:border-zinc-400 text-zinc-700 dark:text-zinc-300' : 'border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-600'"
+            class="px-4 py-2 border text-xs tracking-widest hover:border-zinc-600 hover:text-zinc-700 dark:hover:border-zinc-400 dark:hover:text-zinc-300 transition-colors">
+            12x
+          </button>
+          <input type="number" x-model.number="months" min="1" max="360"
+            class="w-20 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs text-center text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
+        </div>
+        <p class="text-2xl tracking-tight text-zinc-900 dark:text-white">
+          R$ <span x-text="monthly ?? '—'"></span>
+          <span class="text-sm tracking-wider text-zinc-400 dark:text-zinc-600">/mês</span>
+        </p>
+        <p class="text-[10px] tracking-wider text-zinc-400 dark:text-zinc-600 mt-1">
+          em <span x-text="months"></span> parcelas sem juros
+        </p>
+      </div>
+      {% endif %}
+
     </div>
   </section>
 </main>

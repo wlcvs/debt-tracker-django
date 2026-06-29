@@ -30,7 +30,8 @@ def debt(person, credit_card):
     return Debt.objects.create(
         person=person,
         amount="100.00",
-        description="Teste",
+        title="Teste",
+        description="",
         date=date.today(),
     )
 

@@ -34,8 +34,9 @@ class DebtForm(forms.ModelForm):
 
     class Meta:
         model = Debt
-        fields = ["amount", "description", "date", "credit_card", "method"]
+        fields = ["title", "amount", "description", "date", "credit_card", "method"]
         widgets = {
+            "title": forms.TextInput(attrs={"class": INPUT_CLASS}),
             "description": forms.TextInput(attrs={"class": INPUT_CLASS}),
             "date": forms.DateInput(attrs={"class": INPUT_CLASS, "type": "date"}),
             "credit_card": forms.Select(attrs={"class": SELECT_CLASS}),
