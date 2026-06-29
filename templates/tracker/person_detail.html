@@ -45,7 +45,7 @@
       x-text="copied ? 'Link copiado!' : 'Copiar link público'"
       class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
     </button>
-    <button
+    <button x-data
       @click="$store.modal.open('Excluir devedor', '{{ person.name }} e todas as dívidas e pagamentos serão removidos permanentemente.', '{% url 'delete_person' person.pk %}')"
       class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
       Excluir devedor
