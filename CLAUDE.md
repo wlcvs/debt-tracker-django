@@ -17,6 +17,7 @@ Personal debt tracker. The admin (Wallacy) registers debtors and records debts a
 | Database | PostgreSQL — Docker locally / Neon in production |
 | Auth | Django built-in (session + `django.contrib.auth`) |
 | Styles | Tailwind CSS 4 (via CDN) |
+| JS | Alpine.js 3 + @alpinejs/focus (via CDN) |
 | Templates | Django templates |
 | Tests | pytest + pytest-django |
 
@@ -92,6 +93,7 @@ Payment    — amount (Decimal 10,2), date, method (PIX|CASH, required)
 - **Design:** HUD/monochromatic (grayscale, no accent colors). Light background `#f0f0f4`. Dark/light toggle. **UI in pt-BR.**
 - **Commits:** Conventional Commits in English (`feat:`, `fix:`, `chore:`…).
 - **Simple** — single-admin app, no overengineering.
+- **Alpine.js patterns:** interactive state (inline edits, add forms, modal) uses `x-data` per component. Global state lives in `Alpine.store('theme')` and `Alpine.store('modal')`. All directives require an `x-data` ancestor. Form reset on close via `$watch('open', v => !v && $refs.form.reset())`. Focus trap in modal via `x-trap.inert.noscroll` from `@alpinejs/focus`.
 
 ## References
 
