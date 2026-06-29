@@ -82,6 +82,13 @@
       }
     });
 
+    // Clear all errors on any click outside an input/select/textarea
+    document.addEventListener('click', (e) => {
+      if (e.target.matches('input, select, textarea')) return;
+      document.querySelectorAll('.field-error').forEach(err => err.remove());
+      document.querySelectorAll('input, select, textarea').forEach(el => { if (el._errEl) el._errEl = null; });
+    });
+
     function resetForm(form) {
       if (!form) return;
       form.querySelectorAll('input, textarea').forEach(el => {
