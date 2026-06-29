@@ -35,9 +35,10 @@ python manage.py seed   # creates superuser from ADMIN_EMAIL / ADMIN_PASSWORD in
 
 # Dev
 python manage.py runserver
+python manage.py runserver 0.0.0.0:8000   # accessible on local network (mobile testing)
 
 # Tests
-pytest
+pytest tracker/tests/ -q   # use explicit path to avoid conflict with tracker/tests.py stub
 ```
 
 ## Project structure
@@ -62,8 +63,8 @@ docker-compose.yml
 /                          → redirects to /public/
 /login/                    → login (redirects to /dashboard/ if already logged in)
 /logout/
-/public/                   → debtor access: enter UUID code
-/public/<uuid>/            → read-only public view for a debtor
+/public/                   → debtor access: enter UUID code ("Consultar dívida")
+/public/<uuid>/            → read-only public view for a debtor ("Minha Dívida")
 /dashboard/                → admin dashboard
 /dashboard/person/<uuid>/  → person detail
 /dashboard/person/<uuid>/edit|delete/
@@ -80,8 +81,8 @@ docker-compose.yml
 User       — Django built-in
 Person     — id (UUID, serves as access code), name, user FK
 CreditCard — label, user FK
-Debt       — amount (Decimal 10,2), description, date, credit_card FK (nullable), method (PIX|CASH, optional)
-Payment    — amount (Decimal 10,2), date, method (PIX|CASH, required)
+Debt       — amount (Decimal 10,2), description (optional), date, credit_card FK (nullable), method (PIX|CASH, optional)
+Payment    — amount (Decimal 10,2), description (optional), date, method (PIX|CASH, required)
 ```
 
 ## Rules
@@ -89,11 +90,29 @@ Payment    — amount (Decimal 10,2), date, method (PIX|CASH, required)
 - **Never persist derived data** — balances are always computed at runtime.
 - **`method` on Debt** is optional (not every debt is PIX/CASH — it may be on a card).
 - **`method` on Payment** is PIX or CASH, always required.
+- **`description` on both Debt and Payment** is optional (blank=True, default="").
 - **Credit cards with linked debts cannot be deleted.**
 - **Design:** HUD/monochromatic (grayscale, no accent colors). Light background `#f0f0f4`. Dark/light toggle. **UI in pt-BR.**
 - **Commits:** Conventional Commits in English (`feat:`, `fix:`, `chore:`…).
 - **Simple** — single-admin app, no overengineering.
-- **Alpine.js patterns:** interactive state (inline edits, add forms, modal) uses `x-data` per component. Global state lives in `Alpine.store('theme')` and `Alpine.store('modal')`. All directives require an `x-data` ancestor. Form reset on close via `$watch('open', v => !v && $refs.form.reset())`. Focus trap in modal via `x-trap.inert.noscroll` from `@alpinejs/focus`.
+
+## Template architecture
+
+- `base.html` — root HTML shell. Defines `{% block header %}` (default: Debt Tracker + theme toggle), `{% block body %}`, Alpine stores (`theme`, `modal`), and custom form validation.
+- `app_base.html` — extends `base.html`. Overrides `{% block header %}` with nav (back link + logout). Contains `{% block content %}` inside a `<main>` and the global delete confirmation modal.
+- Page templates extend either `app_base.html` (dashboard pages) or `base.html` (login, public, 404).
+
+## Alpine.js patterns
+
+- Interactive state (inline edits, add forms, modals) uses `x-data` per component.
+- Global state: `Alpine.store('theme')` and `Alpine.store('modal')`.
+- All directives require an `x-data` ancestor.
+- Form reset on close: `$watch('open', v => { if (!v) reset(); })` with a `reset()` method.
+- Focus trap in modals: `x-trap.inert.noscroll` from `@alpinejs/focus`.
+- Detail modals via `x-teleport="body"` — escapes parent stacking contexts while keeping Alpine data scope.
+- Custom select: hidden `<input type="hidden" :value="method">` + Alpine dropdown + `@submit` validation (required because hidden inputs don't trigger native `required`).
+- Bottom sheet on mobile (`items-end`), centered on desktop (`sm:items-center`).
+- Share button: `navigator.share()` on HTTPS, `document.execCommand('copy')` fallback for HTTP.
 
 ## References
 
