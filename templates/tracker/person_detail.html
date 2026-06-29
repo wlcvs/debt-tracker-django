@@ -18,19 +18,21 @@
       </h2>
       <form x-show="editing" x-cloak x-ref="nameForm"
             method="post" action="{% url 'edit_person' person.pk %}"
-            class="flex items-center gap-2 flex-wrap"
+            class="flex flex-col gap-2"
             @keydown.escape.window="editing = false; $refs.nameForm.reset()">
         {% csrf_token %}
         <input x-ref="nameInput" type="text" name="name" value="{{ person.name }}" required placeholder="NOME"
           class="bg-transparent border border-zinc-400 dark:border-zinc-600 px-2 py-1 text-sm tracking-widest uppercase text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-700 dark:focus:border-white transition-colors" />
-        <button type="submit"
-          class="text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
-          Salvar
-        </button>
-        <button type="button" @click="editing = false; $refs.nameForm.reset()"
-          class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors cursor-pointer">
-          Cancelar
-        </button>
+        <div class="flex gap-3">
+          <button type="submit"
+            class="text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+            Salvar
+          </button>
+          <button type="button" @click="editing = false; $refs.nameForm.reset()"
+            class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors cursor-pointer">
+            Cancelar
+          </button>
+        </div>
       </form>
     </div>
     <p class="text-xl tracking-tight text-zinc-900 dark:text-white shrink-0">
@@ -40,9 +42,16 @@
 
   {# Actions #}
   <div class="flex items-center gap-4 sm:gap-6 flex-wrap">
-    <button x-data="{ copied: false }"
-      @click="navigator.clipboard.writeText('{{ request.scheme }}://{{ request.get_host }}/public/{{ person.pk }}/').then(() => { copied = true; setTimeout(() => copied = false, 2000) })"
-      x-text="copied ? 'Link copiado!' : 'Copiar link público'"
+    <button x-data="{ shared: false }"
+      @click="
+        const url = '{{ request.scheme }}://{{ request.get_host }}/public/{{ person.pk }}/';
+        if (navigator.share) {
+          navigator.share({ title: '{{ person.name|escapejs }}', url }).catch(() => {});
+        } else {
+          navigator.clipboard.writeText(url).then(() => { shared = true; setTimeout(() => shared = false, 2000) });
+        }
+      "
+      x-text="shared ? 'Link copiado!' : 'Compartilhar'"
       class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
     </button>
     <button x-data
@@ -63,7 +72,21 @@
     {% if debts %}
       <ul class="flex flex-col">
         {% for debt in debts %}
-          <li x-data="{ editing: false }" class="border-b border-zinc-300 dark:border-zinc-700">
+          <li x-data="{
+                editing: false,
+                methodOpen: false,
+                methodError: false,
+                methods: [
+                  { value: 'PIX', label: 'Pix' },
+                  { value: 'CASH', label: 'Dinheiro' },
+                  {% for card in debt_form.credit_card.field.queryset %}{ value: 'card:{{ card.pk }}', label: '{{ card.label|escapejs }}' },{% endfor %}
+                ],
+                method: '{% if debt.credit_card %}card:{{ debt.credit_card.pk }}{% elif debt.method %}{{ debt.method }}{% endif %}',
+                initMethod: '{% if debt.credit_card %}card:{{ debt.credit_card.pk }}{% elif debt.method %}{{ debt.method }}{% endif %}',
+                get methodLabel() { const o = this.methods.find(m => m.value === this.method); return o ? o.label : '— Método —'; },
+                cancelEdit() { this.editing = false; this.method = this.initMethod; this.methodOpen = false; this.methodError = false; this.$refs.debtForm.reset(); }
+              }"
+              class="border-b border-zinc-300 dark:border-zinc-700">
 
             {# Display view #}
             <div x-show="!editing" class="py-2">
@@ -104,7 +127,8 @@
             <form x-show="editing" x-cloak x-ref="debtForm"
                   method="post" action="{% url 'edit_debt' person.pk debt.pk %}"
                   class="flex flex-col gap-1 py-2"
-                  @keydown.escape.window="editing = false; $refs.debtForm.reset()">
+                  @submit="if (!method) { $event.preventDefault(); methodError = true; return; } methodError = false;"
+                  @keydown.escape.window="cancelEdit()">
               {% csrf_token %}
               <input type="text" name="description" value="{{ debt.description }}" required
                 class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
@@ -118,21 +142,34 @@
                     class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
                 </div>
               </div>
-              <select name="payment_method" required
-                class="bg-[#f0f0f4] dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-widest text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400">
-                <option value="" disabled hidden>— Método —</option>
-                <option value="PIX" {% if debt.method == "PIX" %}selected{% endif %}>Pix</option>
-                <option value="CASH" {% if debt.method == "CASH" %}selected{% endif %}>Dinheiro</option>
-                {% for card in debt_form.credit_card.field.queryset %}
-                  <option value="card:{{ card.pk }}" {% if debt.credit_card and debt.credit_card.pk == card.pk %}selected{% endif %}>{{ card.label }}</option>
-                {% endfor %}
-              </select>
+              {# Custom method select #}
+              <div class="relative" @click.outside="methodOpen = false">
+                <button type="button" @click="methodOpen = !methodOpen"
+                  class="w-full text-left flex justify-between items-center bg-[#f0f0f4] dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-widest focus:outline-none transition-colors"
+                  :class="method ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-400 dark:text-zinc-600'">
+                  <span x-text="methodLabel"></span>
+                  <span class="text-[10px] text-zinc-400 ml-2">▾</span>
+                </button>
+                <p x-show="methodError" x-cloak class="field-error text-xs text-red-500 mt-1 tracking-wide">Campo obrigatório</p>
+                <div x-show="methodOpen" x-cloak
+                  class="absolute z-20 left-0 right-0 top-full mt-px border border-zinc-300 dark:border-zinc-700 bg-[#f0f0f4] dark:bg-zinc-950">
+                  <template x-for="opt in methods" :key="opt.value">
+                    <button type="button"
+                      @click="method = opt.value; methodOpen = false; methodError = false;"
+                      x-text="opt.label"
+                      :class="method === opt.value ? 'text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-400'"
+                      class="w-full text-left px-2 py-1.5 text-xs tracking-widest hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors">
+                    </button>
+                  </template>
+                </div>
+                <input type="hidden" name="payment_method" :value="method" />
+              </div>
               <div class="flex gap-3 mt-1">
                 <button type="submit"
                   class="text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
                   Salvar
                 </button>
-                <button type="button" @click="editing = false; $refs.debtForm.reset()"
+                <button type="button" @click="cancelEdit()"
                   class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors cursor-pointer">
                   Cancelar
                 </button>
@@ -144,17 +181,29 @@
     {% endif %}
 
     {# Add debt form #}
-    <div x-data="{ open: false }"
-         x-init="$watch('open', v => { if (!v) $refs.addDebtForm.reset() })"
-         @click.outside="open = false"
-         @keydown.escape.window="open = false">
+    <div x-data="{
+          open: false,
+          methodOpen: false,
+          methodError: false,
+          methods: [
+            { value: 'PIX', label: 'Pix' },
+            { value: 'CASH', label: 'Dinheiro' },
+            {% for card in debt_form.credit_card.field.queryset %}{ value: 'card:{{ card.pk }}', label: '{{ card.label|escapejs }}' },{% endfor %}
+          ],
+          method: '',
+          get methodLabel() { const o = this.methods.find(m => m.value === this.method); return o ? o.label : '— Método —'; }
+        }"
+        x-init="$watch('open', v => { if (!v) { $refs.addDebtForm.reset(); method = ''; methodOpen = false; methodError = false; } })"
+        @click.outside="open = false"
+        @keydown.escape.window="open = false">
       <button type="button" @click="open = !open"
         class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
         + Adicionar dívida
       </button>
       <form x-show="open" x-cloak x-ref="addDebtForm"
             method="post" action="{% url 'add_debt' person.pk %}"
-            class="mt-3 flex flex-col gap-2">
+            class="mt-3 flex flex-col gap-2"
+            @submit="if (!method) { $event.preventDefault(); methodError = true; return; } methodError = false;">
         {% csrf_token %}
         <input type="text" name="description" placeholder="DESCRIÇÃO" required
           class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest placeholder:text-zinc-400 dark:placeholder:text-zinc-600 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
@@ -168,15 +217,28 @@
               class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
           </div>
         </div>
-        <select name="payment_method" required
-          class="bg-[#f0f0f4] dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors">
-          <option value="" disabled selected hidden>— Método —</option>
-          <option value="PIX">Pix</option>
-          <option value="CASH">Dinheiro</option>
-          {% for card in debt_form.credit_card.field.queryset %}
-            <option value="card:{{ card.pk }}">{{ card.label }}</option>
-          {% endfor %}
-        </select>
+        {# Custom method select #}
+        <div class="relative" @click.outside="methodOpen = false">
+          <button type="button" @click="methodOpen = !methodOpen"
+            class="w-full text-left flex justify-between items-center bg-[#f0f0f4] dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest focus:outline-none transition-colors"
+            :class="method ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-400 dark:text-zinc-600'">
+            <span x-text="methodLabel"></span>
+            <span class="text-[10px] text-zinc-400 ml-2">▾</span>
+          </button>
+          <p x-show="methodError" x-cloak class="field-error text-xs text-red-500 mt-1 tracking-wide">Campo obrigatório</p>
+          <div x-show="methodOpen" x-cloak
+            class="absolute z-20 left-0 right-0 top-full mt-px border border-zinc-300 dark:border-zinc-700 bg-[#f0f0f4] dark:bg-zinc-950">
+            <template x-for="opt in methods" :key="opt.value">
+              <button type="button"
+                @click="method = opt.value; methodOpen = false; methodError = false;"
+                x-text="opt.label"
+                :class="method === opt.value ? 'text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-400'"
+                class="w-full text-left px-3 py-2 text-xs tracking-widest hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors">
+              </button>
+            </template>
+          </div>
+          <input type="hidden" name="payment_method" :value="method" />
+        </div>
         <button type="submit"
           class="border border-zinc-400 dark:border-zinc-600 px-4 py-2 text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer self-start">
           Salvar
@@ -192,7 +254,19 @@
     {% if payments %}
       <ul class="flex flex-col">
         {% for payment in payments %}
-          <li x-data="{ editing: false }" class="border-b border-zinc-300 dark:border-zinc-700">
+          <li x-data="{
+                editing: false,
+                methodOpen: false,
+                methods: [
+                  { value: 'PIX', label: 'Pix' },
+                  { value: 'CASH', label: 'Dinheiro' },
+                ],
+                method: '{{ payment.method }}',
+                initMethod: '{{ payment.method }}',
+                get methodLabel() { const o = this.methods.find(m => m.value === this.method); return o ? o.label : '— Método —'; },
+                cancelEdit() { this.editing = false; this.method = this.initMethod; this.methodOpen = false; this.$refs.paymentForm.reset(); }
+              }"
+              class="border-b border-zinc-300 dark:border-zinc-700">
 
             {# Display view #}
             <div x-show="!editing" class="py-2">
@@ -226,7 +300,7 @@
             <form x-show="editing" x-cloak x-ref="paymentForm"
                   method="post" action="{% url 'edit_payment' person.pk payment.pk %}"
                   class="flex flex-col gap-1 py-2"
-                  @keydown.escape.window="editing = false; $refs.paymentForm.reset()">
+                  @keydown.escape.window="cancelEdit()">
               {% csrf_token %}
               <div class="flex gap-2 items-start">
                 <div>
@@ -238,17 +312,33 @@
                     class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
                 </div>
               </div>
-              <select name="method"
-                class="bg-[#f0f0f4] dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400">
-                <option value="PIX" {% if payment.method == "PIX" %}selected{% endif %}>Pix</option>
-                <option value="CASH" {% if payment.method == "CASH" %}selected{% endif %}>Dinheiro</option>
-              </select>
+              {# Custom method select #}
+              <div class="relative" @click.outside="methodOpen = false">
+                <button type="button" @click="methodOpen = !methodOpen"
+                  class="w-full text-left flex justify-between items-center bg-[#f0f0f4] dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-widest focus:outline-none transition-colors"
+                  :class="method ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-400 dark:text-zinc-600'">
+                  <span x-text="methodLabel"></span>
+                  <span class="text-[10px] text-zinc-400 ml-2">▾</span>
+                </button>
+                <div x-show="methodOpen" x-cloak
+                  class="absolute z-20 left-0 right-0 top-full mt-px border border-zinc-300 dark:border-zinc-700 bg-[#f0f0f4] dark:bg-zinc-950">
+                  <template x-for="opt in methods" :key="opt.value">
+                    <button type="button"
+                      @click="method = opt.value; methodOpen = false;"
+                      x-text="opt.label"
+                      :class="method === opt.value ? 'text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-400'"
+                      class="w-full text-left px-2 py-1.5 text-xs tracking-widest hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors">
+                    </button>
+                  </template>
+                </div>
+                <input type="hidden" name="method" :value="method" />
+              </div>
               <div class="flex gap-3 mt-1">
                 <button type="submit"
                   class="text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
                   Salvar
                 </button>
-                <button type="button" @click="editing = false; $refs.paymentForm.reset()"
+                <button type="button" @click="cancelEdit()"
                   class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors cursor-pointer">
                   Cancelar
                 </button>
@@ -260,17 +350,28 @@
     {% endif %}
 
     {# Add payment form #}
-    <div x-data="{ open: false }"
-         x-init="$watch('open', v => { if (!v) $refs.addPaymentForm.reset() })"
-         @click.outside="open = false"
-         @keydown.escape.window="open = false">
+    <div x-data="{
+          open: false,
+          methodOpen: false,
+          methodError: false,
+          methods: [
+            { value: 'PIX', label: 'Pix' },
+            { value: 'CASH', label: 'Dinheiro' },
+          ],
+          method: '',
+          get methodLabel() { const o = this.methods.find(m => m.value === this.method); return o ? o.label : '— Método —'; }
+        }"
+        x-init="$watch('open', v => { if (!v) { $refs.addPaymentForm.reset(); method = ''; methodOpen = false; methodError = false; } })"
+        @click.outside="open = false"
+        @keydown.escape.window="open = false">
       <button type="button" @click="open = !open"
         class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
         + Adicionar pagamento
       </button>
       <form x-show="open" x-cloak x-ref="addPaymentForm"
             method="post" action="{% url 'add_payment' person.pk %}"
-            class="mt-3 flex flex-col gap-2">
+            class="mt-3 flex flex-col gap-2"
+            @submit="if (!method) { $event.preventDefault(); methodError = true; return; } methodError = false;">
         {% csrf_token %}
         <div class="flex gap-2 items-start">
           <div>
@@ -282,12 +383,28 @@
               class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
           </div>
         </div>
-        <select name="method" required
-          class="bg-[#f0f0f4] dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors">
-          <option value="" disabled selected hidden>— Método —</option>
-          <option value="PIX">Pix</option>
-          <option value="CASH">Dinheiro</option>
-        </select>
+        {# Custom method select #}
+        <div class="relative" @click.outside="methodOpen = false">
+          <button type="button" @click="methodOpen = !methodOpen"
+            class="w-full text-left flex justify-between items-center bg-[#f0f0f4] dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest focus:outline-none transition-colors"
+            :class="method ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-400 dark:text-zinc-600'">
+            <span x-text="methodLabel"></span>
+            <span class="text-[10px] text-zinc-400 ml-2">▾</span>
+          </button>
+          <p x-show="methodError" x-cloak class="field-error text-xs text-red-500 mt-1 tracking-wide">Campo obrigatório</p>
+          <div x-show="methodOpen" x-cloak
+            class="absolute z-20 left-0 right-0 top-full mt-px border border-zinc-300 dark:border-zinc-700 bg-[#f0f0f4] dark:bg-zinc-950">
+            <template x-for="opt in methods" :key="opt.value">
+              <button type="button"
+                @click="method = opt.value; methodOpen = false; methodError = false;"
+                x-text="opt.label"
+                :class="method === opt.value ? 'text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-400'"
+                class="w-full text-left px-3 py-2 text-xs tracking-widest hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors">
+              </button>
+            </template>
+          </div>
+          <input type="hidden" name="method" :value="method" />
+        </div>
         <button type="submit"
           class="border border-zinc-400 dark:border-zinc-600 px-4 py-2 text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer self-start">
           Salvar
