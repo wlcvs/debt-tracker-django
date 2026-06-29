@@ -1,10 +1,13 @@
+import json
 from decimal import Decimal
+from django.core.serializers.json import DjangoJSONEncoder
 
 from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView
 from django.db.models import Q, Sum
 from django.db.models.functions import Coalesce
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
@@ -70,8 +73,14 @@ def dashboard(request):
         debt_count=Count("debts")
     ).order_by("label")
 
+    people_json = json.dumps(
+        [{"id": str(p.pk), "name": p.name} for p in people],
+        cls=DjangoJSONEncoder,
+    )
+
     return render(request, "tracker/dashboard.html", {
         "people": people,
+        "people_json": people_json,
         "stats": stats,
         "credit_cards": credit_cards,
         "form": form,
@@ -265,6 +274,78 @@ def delete_credit_card(request, card_id):
         return redirect("dashboard")
     card.delete()
     return redirect("dashboard")
+
+
+# ── Statement import ───────────────────────────────────────────────────────────
+
+@login_required
+@require_POST
+def import_statement(request):
+    pdf_file = request.FILES.get("pdf")
+    if not pdf_file:
+        return JsonResponse({"error": "Nenhum arquivo enviado."}, status=400)
+    if not pdf_file.name.lower().endswith(".pdf"):
+        return JsonResponse({"error": "O arquivo deve ser um PDF."}, status=400)
+
+    try:
+        from .importers import detect_and_parse
+        bank, transactions = detect_and_parse(pdf_file)
+        return JsonResponse({
+            "bank": bank,
+            "transactions": [
+                {"index": i, **t.to_dict()}
+                for i, t in enumerate(transactions)
+            ],
+        })
+    except Exception as e:
+        return JsonResponse({"error": f"Erro ao processar o PDF: {e}"}, status=400)
+
+
+@login_required
+@require_POST
+def save_imported(request):
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Dados inválidos."}, status=400)
+
+    items = data.get("items", [])
+    created = 0
+
+    for item in items:
+        item_type = item.get("type")
+        person_id = item.get("person_id")
+        if item_type not in ("debt", "payment") or not person_id:
+            continue
+
+        person = get_object_or_404(Person, pk=person_id, user=request.user)
+
+        try:
+            amount = Decimal(item["amount"])
+            txn_date = item["date"]
+            description = (item.get("description") or "")[:500]
+        except (KeyError, Exception):
+            continue
+
+        if item_type == "debt":
+            Debt.objects.create(
+                person=person,
+                title=description[:255] or "Importado",
+                description="",
+                amount=amount,
+                date=txn_date,
+            )
+        else:
+            Payment.objects.create(
+                person=person,
+                amount=amount,
+                description=description,
+                date=txn_date,
+                method=Payment.Method.PIX,
+            )
+        created += 1
+
+    return JsonResponse({"created": created})
 
 
 # ── Public landing ─────────────────────────────────────────────────────────────

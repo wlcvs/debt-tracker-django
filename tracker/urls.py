@@ -20,6 +20,9 @@ dashboard_patterns = [
     path("credit-card/add/", views.add_credit_card, name="add_credit_card"),
     path("credit-card/<int:card_id>/edit/", views.edit_credit_card, name="edit_credit_card"),
     path("credit-card/<int:card_id>/delete/", views.delete_credit_card, name="delete_credit_card"),
+
+    path("import/", views.import_statement, name="import_statement"),
+    path("import/save/", views.save_imported, name="save_imported"),
 ]
 
 urlpatterns = [

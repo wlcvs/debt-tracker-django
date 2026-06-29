@@ -92,7 +92,6 @@
           {% for card in credit_cards %}
             <li x-data="{ editing: false }"
                 class="py-2 border-b border-zinc-200 dark:border-zinc-900 text-xs">
-              {# Display row #}
               <div x-show="!editing" class="flex items-center justify-between">
                 <button @click="editing = true; $nextTick(() => $refs.labelInput.focus())"
                   class="tracking-widest uppercase text-zinc-700 dark:text-zinc-300 hover:text-zinc-500 dark:hover:text-zinc-500 transition-colors cursor-pointer text-left">
@@ -104,7 +103,6 @@
                   Excluir
                 </button>
               </div>
-              {# Inline edit form #}
               <form x-show="editing" x-cloak x-ref="editForm" method="post" action="{% url 'edit_credit_card' card.pk %}"
                     class="flex items-center gap-2"
                     @keydown.escape.window="editing = false; $refs.editForm.reset()">
@@ -143,6 +141,166 @@
     </section>
 
   </div>
+
+  {# ── Import button ── #}
+  <section>
+    <button type="button" @click="$dispatch('open-import')"
+      class="border border-zinc-400 dark:border-zinc-600 px-5 py-2.5 text-xs tracking-widest uppercase text-zinc-600 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+      Importar extrato
+    </button>
+  </section>
+
+</div>
+
+{# ── Import modal ── #}
+<div x-data="importModal('{{ csrf_token }}', {% autoescape off %}{{ people_json }}{% endautoescape %})"
+     @open-import.window="open = true"
+     @keydown.escape.window="if (open) { open = false; reset(); }">
+
+  <template x-teleport="body">
+    <div x-show="open" style="display:none"
+         class="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-6">
+      <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="open = false; reset()"></div>
+
+      <div x-trap.inert.noscroll="open"
+           class="relative flex flex-col bg-[#f0f0f4] dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 w-full h-full sm:h-auto sm:max-w-4xl sm:max-h-[90vh]">
+
+        {# Header #}
+        <div class="flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
+          <div>
+            <p class="text-[10px] tracking-[0.3em] uppercase text-zinc-400 dark:text-zinc-500">Importar extrato</p>
+            <p x-show="bank" x-cloak class="text-xs tracking-widest uppercase text-zinc-700 dark:text-zinc-300 mt-0.5" x-text="bank"></p>
+          </div>
+          <button @click="open = false; reset()" class="text-xs text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">✕</button>
+        </div>
+
+        {# Step: upload #}
+        <div x-show="step === 'upload'" class="flex-1 flex flex-col items-center justify-center p-8 gap-4">
+          <p x-show="error" x-cloak x-text="error" class="text-xs text-red-500 dark:text-red-400 tracking-wider text-center"></p>
+
+          <label
+            class="w-full max-w-sm flex flex-col items-center gap-4 border-2 border-dashed border-zinc-300 dark:border-zinc-700 px-8 py-12 cursor-pointer hover:border-zinc-500 dark:hover:border-zinc-400 transition-colors"
+            @dragover.prevent
+            @drop.prevent="handleDrop($event)">
+            <input type="file" accept=".pdf" class="sr-only" @change="handleFile($event)" />
+            <svg class="w-8 h-8 text-zinc-400 dark:text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <p class="text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 text-center">
+              Arraste o PDF aqui<br/>
+              <span class="text-zinc-400 dark:text-zinc-600 normal-case tracking-normal text-[10px] mt-1 block">ou clique para selecionar</span>
+            </p>
+            <p class="text-[10px] text-zinc-400 dark:text-zinc-600 text-center">
+              Nubank · Itaú · Mercado Pago · Bradesco
+            </p>
+          </label>
+        </div>
+
+        {# Step: processing #}
+        <div x-show="step === 'processing'" x-cloak class="flex-1 flex items-center justify-center p-8">
+          <div class="flex flex-col items-center gap-3">
+            <div class="w-6 h-6 border-2 border-zinc-400 dark:border-zinc-600 border-t-zinc-900 dark:border-t-white rounded-full animate-spin"></div>
+            <p class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-500">Processando PDF…</p>
+          </div>
+        </div>
+
+        {# Step: review #}
+        <div x-show="step === 'review'" x-cloak class="flex-1 flex flex-col min-h-0">
+
+          {# Toolbar #}
+          <div class="flex flex-wrap items-center gap-3 px-6 py-3 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
+            <input type="search" x-model="search" placeholder="Filtrar transações…"
+              class="flex-1 min-w-40 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 text-xs tracking-wider placeholder:text-zinc-400 dark:placeholder:text-zinc-600 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 transition-colors" />
+            <span class="text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-600">
+              <span x-text="readyCount"></span> prontos · <span x-text="filteredTransactions.length"></span> visíveis
+            </span>
+            <button type="button" @click="setAllType('debt')"
+              class="text-[10px] tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">
+              Todos como dívida
+            </button>
+            <button type="button" @click="setAllType('payment')"
+              class="text-[10px] tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">
+              Todos como pagamento
+            </button>
+            <button type="button" @click="setAllType('ignore')"
+              class="text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 transition-colors">
+              Ignorar todos
+            </button>
+          </div>
+
+          {# Table #}
+          <div class="flex-1 overflow-auto">
+            <table class="w-full text-xs border-collapse">
+              <thead class="sticky top-0 bg-[#f0f0f4] dark:bg-zinc-900 z-10">
+                <tr class="border-b border-zinc-200 dark:border-zinc-800">
+                  <th class="text-left px-4 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600 whitespace-nowrap">Data</th>
+                  <th class="text-left px-4 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600">Descrição</th>
+                  <th class="text-right px-4 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600 whitespace-nowrap">Valor</th>
+                  <th class="text-left px-4 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600">Devedor</th>
+                  <th class="text-left px-4 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600">Tipo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="t in filteredTransactions" :key="t.index">
+                  <tr class="border-b border-zinc-100 dark:border-zinc-800/60 transition-opacity"
+                      :class="t.type === 'ignore' ? 'opacity-35' : ''">
+                    <td class="px-4 py-2 tabular-nums text-zinc-500 dark:text-zinc-400 whitespace-nowrap" x-text="t.date"></td>
+                    <td class="px-4 py-2 text-zinc-700 dark:text-zinc-300 max-w-xs">
+                      <span class="block truncate" x-text="t.description"></span>
+                    </td>
+                    <td class="px-4 py-2 text-right tabular-nums text-zinc-700 dark:text-zinc-300 whitespace-nowrap"
+                        x-text="'R$ ' + formatAmount(t.amount)"></td>
+                    <td class="px-4 py-2">
+                      <select x-model="t.person_id"
+                        class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-[10px] tracking-wider text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 transition-colors w-full"
+                        :disabled="t.type === 'ignore'">
+                        <option value="">—</option>
+                        <template x-for="p in people" :key="p.id">
+                          <option :value="p.id" x-text="p.name"></option>
+                        </template>
+                      </select>
+                    </td>
+                    <td class="px-4 py-2">
+                      <select x-model="t.type"
+                        class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-[10px] tracking-wider text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 transition-colors">
+                        <option value="ignore">Ignorar</option>
+                        <option value="debt">Dívida</option>
+                        <option value="payment">Pagamento</option>
+                      </select>
+                    </td>
+                  </tr>
+                </template>
+                <tr x-show="filteredTransactions.length === 0" x-cloak>
+                  <td colspan="5" class="px-4 py-8 text-center text-xs text-zinc-400 dark:text-zinc-600">Nenhuma transação encontrada.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {# Footer #}
+          <div class="flex items-center justify-between gap-4 px-6 py-4 border-t border-zinc-200 dark:border-zinc-800 shrink-0">
+            <p class="text-[10px] tracking-wider text-zinc-400 dark:text-zinc-600">
+              <span x-text="readyCount"></span> registro<span x-show="readyCount !== 1">s</span> prontos para importar
+            </p>
+            <div class="flex gap-3">
+              <button type="button" @click="open = false; reset()"
+                class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 transition-colors cursor-pointer">
+                Cancelar
+              </button>
+              <button type="button" @click="save()" :disabled="readyCount === 0 || step === 'saving'"
+                class="border px-5 py-2 text-xs tracking-widest uppercase transition-colors cursor-pointer"
+                :class="readyCount > 0 ? 'border-zinc-600 dark:border-zinc-400 text-zinc-700 dark:text-zinc-300 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white' : 'border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-600 cursor-not-allowed'">
+                <span x-show="step !== 'saving'">Importar <span x-text="readyCount"></span></span>
+                <span x-show="step === 'saving'" x-cloak>Salvando…</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </template>
 </div>
 
 <script>
@@ -156,6 +314,105 @@
       action,
       blocked
     );
+  }
+
+  function importModal(csrfToken, people) {
+    return {
+      open: false,
+      step: 'upload',   // 'upload' | 'processing' | 'review' | 'saving'
+      bank: '',
+      transactions: [],
+      search: '',
+      error: '',
+      csrfToken,
+      people,
+
+      get filteredTransactions() {
+        const q = this.search.trim().toLowerCase();
+        if (!q) return this.transactions;
+        return this.transactions.filter(t =>
+          t.description.toLowerCase().includes(q) ||
+          t.date.includes(q) ||
+          this.formatAmount(t.amount).includes(q)
+        );
+      },
+
+      get readyCount() {
+        return this.transactions.filter(t => t.type !== 'ignore' && t.person_id).length;
+      },
+
+      formatAmount(s) {
+        return parseFloat(s).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      },
+
+      setAllType(type) {
+        this.filteredTransactions.forEach(t => { t.type = type; });
+      },
+
+      reset() {
+        this.step = 'upload';
+        this.bank = '';
+        this.transactions = [];
+        this.search = '';
+        this.error = '';
+      },
+
+      handleDrop(e) {
+        const file = e.dataTransfer.files[0];
+        if (file) this.processFile(file);
+      },
+
+      handleFile(e) {
+        const file = e.target.files[0];
+        if (file) this.processFile(file);
+      },
+
+      async processFile(file) {
+        this.step = 'processing';
+        this.error = '';
+        const fd = new FormData();
+        fd.append('pdf', file);
+        fd.append('csrfmiddlewaretoken', this.csrfToken);
+        try {
+          const res = await fetch('{% url "import_statement" %}', { method: 'POST', body: fd });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Erro ao processar o PDF.');
+          if (!data.transactions.length) throw new Error('Nenhuma transação encontrada neste PDF.');
+          this.bank = data.bank;
+          this.transactions = data.transactions.map(t => ({
+            ...t,
+            person_id: '',
+            type: 'ignore',
+          }));
+          this.step = 'review';
+        } catch(e) {
+          this.error = e.message;
+          this.step = 'upload';
+        }
+      },
+
+      async save() {
+        this.step = 'saving';
+        const items = this.transactions.filter(t => t.type !== 'ignore' && t.person_id);
+        try {
+          const res = await fetch('{% url "save_imported" %}', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': this.csrfToken,
+            },
+            body: JSON.stringify({ items }),
+          });
+          if (res.ok) {
+            window.location.reload();
+          } else {
+            this.step = 'review';
+          }
+        } catch(e) {
+          this.step = 'review';
+        }
+      },
+    };
   }
 </script>
 {% endblock %}
