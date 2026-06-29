@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Consultar saldo — Debt Tracker{% endblock %}
+{% block title %}Consultar dívida — Debt Tracker{% endblock %}
 {% block body_class %}min-h-screen flex flex-col bg-[#f0f0f4] dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100{% endblock %}
 {% block body %}
 <main class="flex-1 flex items-center justify-center px-4 -mt-40">
   <div class="w-full max-w-sm">
-    <h1 class="text-lg tracking-widest uppercase text-zinc-900 dark:text-white mb-8">Consultar saldo</h1>
+    <h1 class="text-lg tracking-widest uppercase text-zinc-900 dark:text-white mb-8">Consultar dívida</h1>
     <form method="post" class="flex flex-col gap-3">
       {% csrf_token %}
       <div>
