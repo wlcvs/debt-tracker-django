@@ -1,10 +1,10 @@
 """
-Itaú parser — suporta dois formatos:
-- Extrato de conta corrente: tabela com colunas Data / Histórico / Valor D/C
-- Fatura de cartão: texto com seção "DATA ESTABELECIMENTO VALOREMR$"
+Itaú parser — two formats supported:
+- Current account statement: table with Data / Historico / Valor D/C columns
+- Credit card bill (fatura): text with "DATA ESTABELECIMENTO VALOREMR$" section
 
-Nota: faturas têm layout de duas colunas mescladas pelo pdfplumber;
-a transação real fica na coluna esquerda, encargos na direita.
+Fatura PDFs have a two-column layout merged by pdfplumber: transactions on the
+left, charges (juros/IOF) on the right. We extract only the left column.
 """
 import re
 from datetime import date as Date
@@ -23,7 +23,7 @@ def parse(pdf_file) -> list[Transaction]:
     pages_text = extract_text_pages(pdf_file)
     full = "\n".join(pages_text)
 
-    # Fatura de cartão: tem seção "DATA ESTABELECIMENTO"
+    # Credit card fatura has a "DATA ESTABELECIMENTO" section header
     if "DATA" in full and "ESTABELECIMENTO" in full:
         return _parse_fatura(pages_text)
 
@@ -37,12 +37,11 @@ def parse(pdf_file) -> list[Transaction]:
 
 
 def _parse_fatura(pages_text: list[str]) -> list[Transaction]:
-    """Extrai lançamentos da seção de compras/saques da fatura Itaú."""
+    """Extract transactions from the purchases/withdrawals section of an Itau fatura."""
     transactions = []
     year = Date.today().year
 
     for page in pages_text:
-        # Tenta capturar o ano da página
         y_m = re.search(r"\b(20\d{2})\b", page)
         if y_m:
             year = int(y_m.group(1))
@@ -57,12 +56,12 @@ def _parse_fatura(pages_text: list[str]) -> list[Transaction]:
             if not line:
                 continue
 
-            # Início da seção de lançamentos
+            # Start of the transactions section
             if "DATA" in line and "ESTABELECIMENTO" in line:
                 in_tx_section = True
                 continue
 
-            # Fim da seção (subtotais)
+            # End of the section (subtotal lines)
             if in_tx_section and re.search(r"Totalandos|Lançamentosno|LTotaldos|Totaldoslançamentos", line):
                 _flush(transactions, pending_date, pending_desc, pending_amount)
                 pending_date = pending_desc = None
@@ -75,14 +74,13 @@ def _parse_fatura(pages_text: list[str]) -> list[Transaction]:
 
             m = _TX_START_RE.match(line)
             if m:
-                # Salva transação anterior
                 _flush(transactions, pending_date, pending_desc, pending_amount)
 
                 date_str, rest = m.group(1), m.group(2)
                 amounts = AMOUNT_RE.findall(rest)
                 if amounts:
                     pending_amount = parse_br_amount(amounts[0])
-                    # Descrição é tudo antes do primeiro valor
+                    # Description is everything before the first amount
                     cut = rest.index(amounts[0])
                     pending_desc = rest[:cut].strip()
                 else:
@@ -96,16 +94,16 @@ def _parse_fatura(pages_text: list[str]) -> list[Transaction]:
                     pending_date = None
 
             elif pending_date:
-                # Linha de continuação: pega só as palavras em CAIXA ALTA antes
-                # do primeiro token com letras minúsculas (coluna direita comprimida)
-                # ex: "MORADIA.FRANCODAROC ETotaldeencargosemR$ 322,59"
-                #      → "MORADIA.FRANCODAROC"
+                # Continuation line: take only ALL-CAPS words before the first
+                # lowercase token — mixed-case words are right-column artifacts.
+                # e.g. "MORADIA.FRANCODAROC ETotaldeencargosemR$ 322,59"
+                #       → "MORADIA.FRANCODAROC"
                 clean_words = []
                 for w in line.split():
                     if AMOUNT_RE.fullmatch(w):
-                        break  # valor → coluna direita
+                        break  # amount → right column
                     if re.search(r"[a-z]", w):
-                        break  # texto comprimido (camelCase) → coluna direita
+                        break  # camelCase compressed text → right column
                     clean_words.append(w)
                 if clean_words:
                     pending_desc = (pending_desc + " " + " ".join(clean_words)).strip()
@@ -117,7 +115,7 @@ def _parse_fatura(pages_text: list[str]) -> list[Transaction]:
 
 def _flush(transactions, date, desc, amount):
     if date and amount and amount > 0:
-        desc = (desc or "Transação").strip(" -•")
+        desc = (desc or "Transaction").strip(" -•")
         transactions.append(Transaction(date=date, description=desc, amount=amount))
 
 

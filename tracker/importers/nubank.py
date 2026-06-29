@@ -1,7 +1,7 @@
 """
-Nubank parser — dois formatos distintos:
-- Conta corrente (extrato): texto com seções "DD MMM YYYY Total de..."
-- Cartão de crédito (fatura): tabela coluna única por linha de transação
+Nubank parser — two distinct formats:
+- Current account (extrato): text with "DD MMM YYYY Total de..." day sections
+- Credit card (fatura): single-column table, one row per transaction
 """
 import re
 from datetime import date as Date
@@ -9,7 +9,7 @@ from decimal import Decimal
 
 from .base import Transaction, MONTHS_PT, parse_br_amount, extract_text_pages, extract_tables
 
-# Conta corrente
+# Current account
 _DATE_HEADER_RE = re.compile(r'^(\d{2}) ([A-Z]{3}) (\d{4})')
 _LINE_END_AMOUNT_RE = re.compile(r'\s(\d{1,3}(?:\.\d{3})*,\d{2})$')
 
@@ -20,7 +20,7 @@ _CC_SKIP = (
     'Asseguramos', 'Wallacy Vieira da Silva', 'Agência 0001',
 )
 
-# Cartão: "04 MAI •••• 8119 Descrição [- Parcela X/Y] R$ 68,59"
+# Card: "04 MAI •••• 8119 Description [- Parcela X/Y] R$ 68,59"
 _CARD_TX_RE = re.compile(r'^(\d{2} [A-Z]{3})\s+[•]+\s+\d+\s+(.+?)\s+R\$\s+([\d.,]+)')
 
 
@@ -32,7 +32,7 @@ def parse(pdf_file) -> list[Transaction]:
     return _parse_cartao(pdf_file, pages_text)
 
 
-# ── Conta corrente ─────────────────────────────────────────────────────────────
+# ── Current account ────────────────────────────────────────────────────────────
 
 def _parse_conta_corrente(pages_text: list[str]) -> list[Transaction]:
     transactions = []
@@ -44,7 +44,7 @@ def _parse_conta_corrente(pages_text: list[str]) -> list[Transaction]:
             if not line:
                 continue
 
-            # "01 MAI 2026 Total de saídas - 92,49"
+            # "01 MAI 2026 Total de saídas - 92,49" — day section header
             m = _DATE_HEADER_RE.match(line)
             if m and 'Total de' in line:
                 month = MONTHS_PT.get(m.group(2))
@@ -58,7 +58,7 @@ def _parse_conta_corrente(pages_text: list[str]) -> list[Transaction]:
             if any(line.startswith(s) for s in _CC_SKIP):
                 continue
 
-            # Linha de transação: termina com valor BR
+            # Transaction line ends with a BR amount
             am = _LINE_END_AMOUNT_RE.search(line)
             if am and current_date:
                 amount = parse_br_amount(am.group(1))
@@ -71,14 +71,14 @@ def _parse_conta_corrente(pages_text: list[str]) -> list[Transaction]:
 
 
 def _clean_cc_desc(text: str) -> str:
-    text = re.sub(r'\s*-\s*•+\.\d+\.\d+-••', '', text)                    # CPF
+    text = re.sub(r'\s*-\s*•+\.\d+\.\d+-••', '', text)                    # CPF mask
     text = re.sub(r'\s*-\s*\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}', '', text)   # CNPJ
-    text = re.sub(r'\s+-\s+[A-Z]{2}[\w\s.]+\(\d+\).*$', '', text)         # roteamento bancário
-    text = re.sub(r'\s+-\s+[A-Z]+$', '', text)                             # código banco isolado
+    text = re.sub(r'\s+-\s+[A-Z]{2}[\w\s.]+\(\d+\).*$', '', text)         # bank routing info
+    text = re.sub(r'\s+-\s+[A-Z]+$', '', text)                             # trailing bank code
     return text.strip(' -•')
 
 
-# ── Cartão ─────────────────────────────────────────────────────────────────────
+# ── Credit card ────────────────────────────────────────────────────────────────
 
 def _parse_cartao(pdf_file, pages_text: list[str]) -> list[Transaction]:
     year = Date.today().year

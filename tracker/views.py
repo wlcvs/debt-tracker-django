@@ -411,7 +411,7 @@ def train_model(request):
         )
         saved += 1
 
-    # Retreina se há exemplos suficientes
+    # Retrain with all accumulated examples
     all_examples = list(TrainingExample.objects.values("line", "bank", "is_transaction"))
     from .ml import train
     trained_on = train(all_examples)

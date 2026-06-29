@@ -1,8 +1,8 @@
 """
-Feature extraction por linha de texto de PDF bancário.
+Feature extraction for bank PDF text lines.
 
-Cada linha vira um vetor numérico que o classificador usa para decidir
-se é ou não uma transação financeira.
+Each line is converted to a numeric vector used by the classifier
+to decide whether it represents a financial transaction.
 """
 import re
 

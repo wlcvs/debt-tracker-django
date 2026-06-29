@@ -48,7 +48,7 @@ class Debt(models.Model):
 
 
 class TrainingExample(models.Model):
-    """Linha de PDF rotulada como transação ou não — alimenta o modelo ML."""
+    """Labeled PDF line (transaction or noise) used to train the ML model."""
     line = models.TextField()
     bank = models.CharField(max_length=100)
     is_transaction = models.BooleanField()

@@ -1,11 +1,11 @@
 """
 Mercado Pago credit card statement parser.
 
-Formato do PDF (texto, página 2):
+PDF format (text, page 2):
   22/04 MP*CARLOSJORGEMA Parcela 2 de 3 R$ 111,23
   08/06 SUPERMERCADO PORTO SEG R$ 195,23
 
-Linhas de pagamento ("Pagamento da fatura...") são ignoradas.
+Payment lines ("Pagamento da fatura...") are skipped.
 """
 import re
 from datetime import date as Date

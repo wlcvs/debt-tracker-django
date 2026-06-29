@@ -1,15 +1,15 @@
 """
 Bradesco bank statement parser (text-based).
 
-O extrato do Bradesco Celular usa texto estruturado em grupos:
-  TIPO_TRANSACAO               (ex: PIX ENVIADO, TED-TRANSF ELET DISPON)
-  DD/MM/YYYY doc valor saldo   (linha de data + dados)
-  doc valor saldo              (linha de dados sem data, mesma data anterior)
-  DES: Descrição DD/MM         (descrição opcional do PIX)
-  REMET.Nome do remetente      (remetente opcional de TED)
+The Bradesco Celular export uses structured text groups:
+  TRANSACTION_TYPE             (e.g. PIX ENVIADO, TED-TRANSF ELET DISPON)
+  DD/MM/YYYY doc amount bal    (date + data line)
+  doc amount bal               (data line without date, same date as previous)
+  DES: Description DD/MM       (optional PIX description)
+  REMET. Sender name           (optional TED sender)
 
-O valor usado é sempre o primeiro valor da linha de dados.
-Valores < R$ 0,05 (juros/rendimento) são ignorados.
+The first amount on the data line is always used.
+Amounts < R$0.05 (interest/rounding) are ignored.
 """
 import re
 from datetime import date as Date
@@ -31,7 +31,7 @@ def parse(pdf_file) -> list[Transaction]:
 def _parse_text(pdf_file) -> list[Transaction]:
     import pdfplumber
 
-    # Cada item é um dict para permitir atualização da descrição após DES:/REMET.
+    # Mutable dicts so DES:/REMET. lines can update the description post-hoc
     txns: list[dict] = []
     current_date = None
     pending_type = ''
@@ -52,7 +52,7 @@ def _parse_text(pdf_file) -> list[Transaction]:
                 if any(line.startswith(s) for s in _DETAIL_STARTS):
                     continue
 
-                # DES:/REM: → atualiza descrição da última transação
+                # DES:/REM: — update the last transaction's description
                 if line.startswith('DES:') or line.startswith('REM:'):
                     extra = re.sub(r'\s+\d{2}/\d{2}$', '', line[4:]).strip()
                     if txns and extra:
@@ -60,14 +60,14 @@ def _parse_text(pdf_file) -> list[Transaction]:
                         txns[-1]['desc'] = f"{base} - {extra}" if base else extra
                     continue
 
-                # REMET. → remetente de TED, atualiza última transação
+                # REMET. — TED sender, update the last transaction
                 if line.startswith('REMET.'):
                     if txns:
                         base = txns[-1]['base']
                         txns[-1]['desc'] = f"{base} - {line[6:].strip()}" if base else line
                     continue
 
-                # Linha com data: DD/MM/YYYY ...
+                # Date line: DD/MM/YYYY ...
                 date_m = _DATE_LINE_RE.match(line)
                 if date_m:
                     d, m, y = date_m.group(1).split('/')
@@ -80,7 +80,7 @@ def _parse_text(pdf_file) -> list[Transaction]:
                     amounts = AMOUNT_RE.findall(rest)
                     if len(amounts) >= 2:
                         amount = parse_br_amount(amounts[0])
-                        # Extrai descrição textual do resto (remove valores e números de doc)
+                        # Extract text description (strip amounts and doc numbers)
                         rest_desc = AMOUNT_RE.sub('', rest).strip()
                         rest_desc = re.sub(r'\b\d+\b', '', rest_desc).strip(' *')
                         if rest_desc:
@@ -88,14 +88,14 @@ def _parse_text(pdf_file) -> list[Transaction]:
                         _add(txns, current_date, pending_type, amount)
                     continue
 
-                # Linha de dados sem data: doc valor saldo
+                # Data line without date: doc amount balance
                 amounts = AMOUNT_RE.findall(line)
                 if len(amounts) >= 2 and re.match(r'^\d+\s', line):
                     if current_date:
                         _add(txns, current_date, pending_type, parse_br_amount(amounts[0]))
                     continue
 
-                # Linha de tipo para a próxima transação
+                # Otherwise: type label for the next transaction
                 pending_type = line
 
     return [Transaction(t['date'], t['desc'], t['amount']) for t in txns]
@@ -104,5 +104,5 @@ def _parse_text(pdf_file) -> list[Transaction]:
 def _add(txns: list[dict], txn_date: Date, pending_type: str, amount: Decimal | None) -> None:
     if amount is None or amount < Decimal('0.05'):
         return
-    label = pending_type or 'Transação'
+    label = pending_type or 'Transaction'
     txns.append({'date': txn_date, 'desc': label, 'base': label, 'amount': amount})

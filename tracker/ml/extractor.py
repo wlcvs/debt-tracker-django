@@ -1,15 +1,15 @@
 """
-Extrai linhas brutas de um PDF e classifica cada uma com o algoritmo
-existente E com o modelo ML, retornando ambos os resultados.
+Extracts raw lines from a PDF and classifies each one using both the
+existing algorithm and the ML model, returning both result sets.
 
-Formato de saída de cada lista:
+Each item in a result list:
   {
-    "index": int,
-    "date":  "YYYY-MM-DD",
+    "index":       int,
+    "date":        "YYYY-MM-DD",
     "description": str,
-    "amount": str,         # Decimal como string
-    "line_raw": str,       # linha original do PDF (para treinamento)
-    "confidence": float,   # probabilidade do modelo (0–1)
+    "amount":      str,         # Decimal as string
+    "line_raw":    str,         # original PDF line (used for training)
+    "confidence":  float,       # model probability (0–1)
   }
 """
 from __future__ import annotations
@@ -23,7 +23,7 @@ from tracker.ml import predict, is_trained
 
 
 def run_algorithm(pdf_bytes: bytes, bank_hint: str = "") -> tuple[str, list[dict]]:
-    """Roda o parser existente e retorna (banco, transações)."""
+    """Run the existing parser and return (bank, transactions)."""
     f = io.BytesIO(pdf_bytes)
     bank, txns = detect_and_parse(f)
     results = [
@@ -32,7 +32,7 @@ def run_algorithm(pdf_bytes: bytes, bank_hint: str = "") -> tuple[str, list[dict
             "date": t.date.isoformat(),
             "description": t.description,
             "amount": str(t.amount),
-            "line_raw": "",   # parser não expõe a linha original
+            "line_raw": "",   # parsers don't expose the raw source line
             "confidence": 1.0,
         }
         for i, t in enumerate(txns)
@@ -42,14 +42,13 @@ def run_algorithm(pdf_bytes: bytes, bank_hint: str = "") -> tuple[str, list[dict
 
 def run_model(pdf_bytes: bytes, bank: str) -> list[dict]:
     """
-    Passa cada linha do PDF pelo modelo ML e retorna as que o modelo
-    acredita serem transações (confiança >= 0.5).
+    Score each PDF line with the ML model and return lines the model
+    believes are transactions (confidence >= 0.5).
 
-    Cada resultado inclui a linha bruta e o que foi possível extrair
-    com regex simples (data DD/MM, primeiro valor BR).
+    Each result includes the raw line and regex-extracted fields
+    (DD/MM date and first BR amount).
     """
     import re
-    from datetime import date as Date
 
     pages_text = extract_text_pages(io.BytesIO(pdf_bytes))
 
@@ -62,7 +61,7 @@ def run_model(pdf_bytes: bytes, bank: str) -> list[dict]:
             break
 
     results = []
-    seen = set()
+    seen: set[str] = set()
 
     for page in pages_text:
         for line in page.splitlines():
@@ -70,7 +69,6 @@ def run_model(pdf_bytes: bytes, bank: str) -> list[dict]:
             if not line or len(line) < 5:
                 continue
 
-            # Evita duplicatas exatas
             if line in seen:
                 continue
             seen.add(line)
@@ -79,7 +77,6 @@ def run_model(pdf_bytes: bytes, bank: str) -> list[dict]:
             if confidence < 0.5:
                 continue
 
-            # Extrai campos básicos via regex
             date_m = _date_re.search(line)
             amounts = AMOUNT_RE.findall(line)
 
@@ -96,10 +93,9 @@ def run_model(pdf_bytes: bytes, bank: str) -> list[dict]:
             if not amount or amount <= 0:
                 continue
 
-            # Descrição: tudo antes do primeiro valor
+            # Description: everything before the first amount, date stripped
             first_amount_pos = line.index(amounts[0])
             desc = line[:first_amount_pos].strip(" -")
-            # Remove a data da descrição
             desc = _date_re.sub("", desc).strip(" -")
 
             results.append({

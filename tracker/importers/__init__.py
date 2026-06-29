@@ -16,13 +16,13 @@ def detect_and_parse(pdf_file) -> tuple[str, list[Transaction]]:
 
     pdf_file.seek(0)
 
-    # Nubank antes do Bradesco: extratos Nubank mencionam "BCO BRADESCO S.A."
-    # nas transferências, o que causaria falsa detecção se Bradesco viesse primeiro
+    # Nubank before Bradesco: Nubank statements mention "BCO BRADESCO S.A."
+    # in transfer descriptions, causing false detection if Bradesco came first
     if "nubank" in full_text or "nu pagamentos" in full_text:
         return "Nubank", nubank.parse(pdf_file)
 
-    # "bradesco celular" é específico do app do Bradesco; "bradesco" sozinho
-    # pode aparecer como referência em extratos de outros bancos
+    # "bradesco celular" is specific to the Bradesco app export;
+    # plain "bradesco" can appear as a bank reference in other banks' statements
     if "bradesco celular" in full_text or "banco bradesco" in full_text:
         return "Bradesco", bradesco.parse(pdf_file)
 
@@ -32,7 +32,7 @@ def detect_and_parse(pdf_file) -> tuple[str, list[Transaction]]:
     if "mercado pago" in full_text or "mercadopago" in full_text:
         return "Mercado Pago", mercadopago.parse(pdf_file)
 
-    # Último recurso para Bradesco sem o cabeçalho "Celular"
+    # Last resort: Bradesco statement without the "Celular" header
     if "bradesco" in full_text:
         return "Bradesco", bradesco.parse(pdf_file)
 

@@ -1,19 +1,18 @@
 """
-Classificador de linhas: transação financeira vs. ruído.
+Line classifier: financial transaction vs. noise.
 
-Usa RandomForest do sklearn. O modelo é salvo em model.pkl ao lado deste
-arquivo e recarregado a cada chamada (arquivo pequeno, leitura rápida).
+Uses sklearn's RandomForest. The model is saved to model.pkl next to this
+file and reloaded on each call (small file, fast read).
 
-Se o modelo ainda não foi treinado, predict() retorna confiança 0.5
-(incerto) e is_trained() retorna False.
+If the model has not been trained yet, predict() returns 0.5 (uncertain)
+and is_trained() returns False.
 """
 import os
 import pickle
 
-import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 
-from .features import extract, FEATURE_NAMES
+from .features import extract
 
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "model.pkl")
 
@@ -23,7 +22,7 @@ def is_trained() -> bool:
 
 
 def predict(line: str, bank: str = "") -> float:
-    """Retorna probabilidade (0–1) de que a linha seja uma transação."""
+    """Return probability (0–1) that this line is a transaction."""
     if not is_trained():
         return 0.5
     with open(MODEL_PATH, "rb") as f:
@@ -35,14 +34,14 @@ def predict(line: str, bank: str = "") -> float:
 
 def train(examples: list[dict]) -> int:
     """
-    Treina o modelo com os exemplos fornecidos.
+    Train the classifier on labeled examples.
 
-    Cada exemplo deve ter:
-      - 'line': str  (texto da linha)
+    Each example must have:
+      - 'line': str
       - 'bank': str
       - 'is_transaction': bool
 
-    Retorna o número de exemplos usados.
+    Returns the number of examples used.
     """
     if len(examples) < 5:
         return 0
