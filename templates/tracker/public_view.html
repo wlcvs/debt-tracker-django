@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load l10n %}
 {% block title %}Minha Dívida — Debt Tracker{% endblock %}
 
 {% block body_class %}min-h-screen flex flex-col bg-[#f0f0f4] dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100{% endblock %}
@@ -13,7 +14,7 @@
     amountMax: '',
     showFilters: false,
     months: 12,
-    balance: {{ balance }},
+    balance: {{ balance|unlocalize }},
     get monthly() {
       const m = parseInt(this.months);
       if (!m || m <= 0 || this.balance <= 0) return null;
@@ -119,7 +120,7 @@
                 '{{ debt.description|escapejs }}',
                 '{% if debt.credit_card %}{{ debt.credit_card.label|escapejs }}{% elif debt.method %}{{ debt.get_method_display|escapejs }}{% endif %}',
                 '{{ debt.date|date:'Y-m-d' }}',
-                {{ debt.amount }}
+                {{ debt.amount|unlocalize }}
               )">
               <span class="truncate mr-4">
                 {{ debt.title }}
@@ -152,7 +153,7 @@
                 '{{ payment.description|escapejs }}',
                 '{{ payment.get_method_display|escapejs }}',
                 '{{ payment.date|date:'Y-m-d' }}',
-                {{ payment.amount }}
+                {{ payment.amount|unlocalize }}
               )">
               <div class="flex justify-between text-xs text-zinc-700 dark:text-zinc-300">
                 <span>R$ {{ payment.amount|floatformat:2 }} <span class="ml-1 text-zinc-400 dark:text-zinc-600">{{ payment.get_method_display }}</span></span>

@@ -105,7 +105,7 @@
 
             <button @click="open = true"
               class="w-full flex justify-between items-center py-3 hover:opacity-60 transition-opacity text-left gap-4">
-              <span class="text-xs tracking-widest text-zinc-700 dark:text-zinc-300 truncate">{{ debt.title }}</span>
+              <span class="text-xs tracking-widest text-zinc-700 dark:text-zinc-300 truncate">{% if debt.title %}{{ debt.title }}{% else %}<span class="text-zinc-400 dark:text-zinc-600 italic">sem título</span>{% endif %}</span>
               <span class="text-xs text-zinc-700 dark:text-zinc-300 shrink-0">R$ {{ debt.amount|floatformat:2 }}</span>
             </button>
 
