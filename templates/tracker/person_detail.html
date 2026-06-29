@@ -7,7 +7,6 @@
 {# ── Person header ── #}
 <div class="border-b border-zinc-300 dark:border-zinc-700 pb-4 sm:pb-6 flex flex-col gap-3 mb-6 sm:mb-8">
 
-  {# Name display / edit toggle #}
   <div x-data="{ editing: false }" class="flex items-start justify-between gap-4">
     <div class="flex-1 min-w-0">
       <h2 x-show="!editing"
@@ -40,7 +39,6 @@
     </p>
   </div>
 
-  {# Actions #}
   <div class="flex items-center gap-4 sm:gap-6 flex-wrap">
     <button x-data="{
         shared: false,
@@ -64,7 +62,7 @@
       class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
     </button>
     <button x-data
-      @click="$store.modal.open('Excluir devedor', '{{ person.name }} e todas as dívidas e pagamentos serão removidos permanentemente.', '{% url 'delete_person' person.pk %}')"
+      @click="$store.modal.open('Excluir devedor', '{{ person.name|escapejs }} e todas as dívidas e pagamentos serão removidos permanentemente.', '{% url 'delete_person' person.pk %}')"
       class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
       Excluir devedor
     </button>
@@ -82,6 +80,7 @@
       <ul class="flex flex-col">
         {% for debt in debts %}
           <li x-data="{
+                open: false,
                 editing: false,
                 methodOpen: false,
                 methodError: false,
@@ -93,93 +92,134 @@
                 method: '{% if debt.credit_card %}card:{{ debt.credit_card.pk }}{% elif debt.method %}{{ debt.method }}{% endif %}',
                 initMethod: '{% if debt.credit_card %}card:{{ debt.credit_card.pk }}{% elif debt.method %}{{ debt.method }}{% endif %}',
                 get methodLabel() { const o = this.methods.find(m => m.value === this.method); return o ? o.label : '— Método —'; },
-                cancelEdit() { this.editing = false; this.method = this.initMethod; this.methodOpen = false; this.methodError = false; this.$refs.debtForm.reset(); }
+                reset() {
+                  this.editing = false;
+                  this.method = this.initMethod;
+                  this.methodOpen = false;
+                  this.methodError = false;
+                  this.$nextTick(() => { if (this.$refs.editDebtForm) this.$refs.editDebtForm.reset(); });
+                }
               }"
-              class="border-b border-zinc-300 dark:border-zinc-700">
+              x-init="$watch('open', v => { if (!v) reset(); })"
+              class="border-b border-zinc-300 dark:border-zinc-700 last:border-0">
 
-            {# Display view #}
-            <div x-show="!editing" class="py-3">
-              <div class="flex justify-between items-start text-xs gap-2">
-                <div class="min-w-0">
-                  <div class="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
-                    <span class="truncate">{{ debt.description }}</span>
-                    {% if debt.credit_card %}
-                      <span class="shrink-0 text-[10px] tracking-widest uppercase border border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 px-1.5 py-0.5">
-                        {{ debt.credit_card.label }}
-                      </span>
-                    {% elif debt.method %}
-                      <span class="shrink-0 text-[10px] tracking-widest uppercase border border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 px-1.5 py-0.5">
-                        {{ debt.get_method_display }}
-                      </span>
-                    {% endif %}
-                  </div>
-                  <div class="mt-0.5 text-[10px] tracking-wider text-zinc-400 dark:text-zinc-600">{{ debt.date }}</div>
-                </div>
-                <div class="flex items-center gap-4 shrink-0">
-                  <span class="tracking-tight text-zinc-700 dark:text-zinc-300">R$ {{ debt.amount|floatformat:2 }}</span>
-                  <button @click="editing = true; $nextTick(() => $refs.debtForm.querySelector('input').focus())"
-                    class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-700 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors cursor-pointer">
-                    Editar
-                  </button>
-                </div>
-              </div>
-            </div>
+            {# List row #}
+            <button @click="open = true"
+              class="w-full flex justify-between items-center py-3 hover:opacity-60 transition-opacity text-left gap-4">
+              <span class="text-xs tracking-widest text-zinc-700 dark:text-zinc-300 truncate">{{ debt.description }}</span>
+              <span class="text-xs text-zinc-700 dark:text-zinc-300 shrink-0">R$ {{ debt.amount|floatformat:2 }}</span>
+            </button>
 
-            {# Edit form #}
-            <form x-show="editing" x-cloak x-ref="debtForm"
-                  method="post" action="{% url 'edit_debt' person.pk debt.pk %}"
-                  class="flex flex-col gap-2 py-3"
-                  @submit="if (!method) { $event.preventDefault(); methodError = true; return; } methodError = false;"
-                  @keydown.escape.window="cancelEdit()">
-              {% csrf_token %}
-              <input type="text" name="description" value="{{ debt.description }}" required
-                class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
-              <div class="flex gap-2 flex-wrap items-start">
-                <input type="text" inputmode="decimal" name="amount" value="{{ debt.amount|floatformat:2 }}" required
-                  class="w-24 bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
-                <input type="date" name="date" value="{{ debt.date|date:'Y-m-d' }}" required
-                  class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
-              </div>
-              {# Custom method select #}
-              <div class="relative" @click.outside="methodOpen = false">
-                <button type="button" @click="methodOpen = !methodOpen"
-                  class="w-full text-left flex justify-between items-center bg-[#f0f0f4] dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-widest focus:outline-none transition-colors"
-                  :class="method ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-400 dark:text-zinc-600'">
-                  <span x-text="methodLabel"></span>
-                  <span class="text-[10px] text-zinc-400 ml-2">▾</span>
-                </button>
-                <p x-show="methodError" x-cloak class="field-error text-xs text-red-500 mt-1 tracking-wide">Campo obrigatório</p>
-                <div x-show="methodOpen" x-cloak
-                  class="absolute z-20 left-0 right-0 top-full mt-px border border-zinc-300 dark:border-zinc-700 bg-[#f0f0f4] dark:bg-zinc-950">
-                  <template x-for="opt in methods" :key="opt.value">
-                    <button type="button"
-                      @click="method = opt.value; methodOpen = false; methodError = false;"
-                      x-text="opt.label"
-                      :class="method === opt.value ? 'text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-400'"
-                      class="w-full text-left px-2 py-1.5 text-xs tracking-widest hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors">
+            {# Detail / edit modal #}
+            <template x-teleport="body">
+              <div x-show="open" style="display:none"
+                   class="fixed inset-0 z-40 flex items-end sm:items-center justify-center sm:p-4"
+                   @keydown.escape.window="open = false">
+                <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="open = false"></div>
+                <div x-trap.inert.noscroll="open"
+                     class="relative bg-[#f0f0f4] dark:bg-zinc-900 border-t sm:border border-zinc-300 dark:border-zinc-700 w-full sm:max-w-sm max-h-[90vh] overflow-y-auto">
+
+                  {# Modal header #}
+                  <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-zinc-200 dark:border-zinc-800">
+                    <p class="text-[10px] tracking-[0.3em] uppercase text-zinc-400 dark:text-zinc-500">Dívida</p>
+                    <button @click="open = false"
+                      class="text-xs tracking-widest text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+                      ✕
                     </button>
-                  </template>
+                  </div>
+
+                  {# Detail view #}
+                  <div x-show="!editing" class="px-6 py-5">
+                    <p class="text-sm tracking-widest uppercase text-zinc-900 dark:text-white mb-1">{{ debt.description }}</p>
+                    <p class="text-3xl tracking-tight text-zinc-900 dark:text-white mb-3">R$ {{ debt.amount|floatformat:2 }}</p>
+                    <div class="flex items-center gap-3 mb-6 flex-wrap">
+                      <span class="text-xs text-zinc-400 dark:text-zinc-600">{{ debt.date }}</span>
+                      {% if debt.credit_card %}
+                        <span class="text-[10px] tracking-widest uppercase border border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 px-1.5 py-0.5">{{ debt.credit_card.label }}</span>
+                      {% elif debt.method %}
+                        <span class="text-[10px] tracking-widest uppercase border border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 px-1.5 py-0.5">{{ debt.get_method_display }}</span>
+                      {% endif %}
+                    </div>
+                    <div class="flex gap-3">
+                      <button @click="editing = true"
+                        class="border border-zinc-400 dark:border-zinc-600 px-5 py-2 text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+                        Editar
+                      </button>
+                      <button @click="open = false; $store.modal.open('Excluir dívida', '&quot;{{ debt.description|escapejs }}&quot; será removida permanentemente.', '{% url 'delete_debt' person.pk debt.pk %}')"
+                        class="border border-zinc-300 dark:border-zinc-700 px-5 py-2 text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:border-red-400 hover:text-red-400 transition-colors cursor-pointer">
+                        Excluir
+                      </button>
+                    </div>
+                  </div>
+
+                  {# Edit form #}
+                  <form x-show="editing" x-cloak x-ref="editDebtForm"
+                        method="post" action="{% url 'edit_debt' person.pk debt.pk %}"
+                        class="px-6 py-5 flex flex-col gap-3"
+                        @submit="if (!method) { $event.preventDefault(); methodError = true; return; } methodError = false;">
+                    {% csrf_token %}
+                    <div>
+                      <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Descrição</p>
+                      <input type="text" name="description" value="{{ debt.description }}" required
+                        class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-wider text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
+                    </div>
+                    <div class="flex gap-3">
+                      <div>
+                        <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Valor</p>
+                        <input type="text" inputmode="decimal" name="amount" value="{{ debt.amount|floatformat:2 }}" required
+                          class="w-28 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-wider text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
+                      </div>
+                      <div class="flex-1">
+                        <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Data</p>
+                        <input type="date" name="date" value="{{ debt.date|date:'Y-m-d' }}" required
+                          class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-wider text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
+                      </div>
+                    </div>
+                    <div>
+                      <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Método</p>
+                      <div class="relative" @click.outside="methodOpen = false">
+                        <button type="button" @click="methodOpen = !methodOpen"
+                          class="w-full text-left flex justify-between items-center bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest focus:outline-none transition-colors"
+                          :class="method ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-400 dark:text-zinc-600'">
+                          <span x-text="methodLabel"></span>
+                          <span class="text-[10px] text-zinc-400 ml-2">▾</span>
+                        </button>
+                        <p x-show="methodError" x-cloak class="text-xs text-red-500 mt-1 tracking-wide">Campo obrigatório</p>
+                        <div x-show="methodOpen" x-cloak
+                          class="absolute z-10 left-0 right-0 top-full mt-px border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 max-h-40 overflow-y-auto">
+                          <template x-for="opt in methods" :key="opt.value">
+                            <button type="button"
+                              @click="method = opt.value; methodOpen = false; methodError = false;"
+                              x-text="opt.label"
+                              :class="method === opt.value ? 'text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-400'"
+                              class="w-full text-left px-3 py-2 text-xs tracking-widest hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+                            </button>
+                          </template>
+                        </div>
+                        <input type="hidden" name="payment_method" :value="method" />
+                      </div>
+                    </div>
+                    <div class="flex justify-between items-center pt-1">
+                      <div class="flex gap-3">
+                        <button type="submit"
+                          class="border border-zinc-400 dark:border-zinc-600 px-5 py-2 text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+                          Salvar
+                        </button>
+                        <button type="button" @click="editing = false"
+                          class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors cursor-pointer">
+                          Cancelar
+                        </button>
+                      </div>
+                      <button type="button"
+                        @click="open = false; $store.modal.open('Excluir dívida', '&quot;{{ debt.description|escapejs }}&quot; será removida permanentemente.', '{% url 'delete_debt' person.pk debt.pk %}')"
+                        class="text-xs tracking-widest uppercase text-zinc-300 dark:text-zinc-700 hover:text-red-400 transition-colors cursor-pointer">
+                        Excluir
+                      </button>
+                    </div>
+                  </form>
                 </div>
-                <input type="hidden" name="payment_method" :value="method" />
               </div>
-              <div class="flex justify-between items-center mt-1">
-                <div class="flex gap-3">
-                  <button type="submit"
-                    class="text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
-                    Salvar
-                  </button>
-                  <button type="button" @click="cancelEdit()"
-                    class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors cursor-pointer">
-                    Cancelar
-                  </button>
-                </div>
-                <button type="button"
-                  @click="$store.modal.open('Excluir dívida', '&quot;{{ debt.description|escapejs }}&quot; será removida permanentemente.', '{% url 'delete_debt' person.pk debt.pk %}')"
-                  class="text-xs tracking-widest uppercase text-zinc-300 dark:text-zinc-700 hover:text-red-400 dark:hover:text-red-500 transition-colors cursor-pointer">
-                  Excluir
-                </button>
-              </div>
-            </form>
+            </template>
           </li>
         {% endfor %}
       </ul>
@@ -220,7 +260,6 @@
               class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
           </div>
         </div>
-        {# Custom method select #}
         <div class="relative" @click.outside="methodOpen = false">
           <button type="button" @click="methodOpen = !methodOpen"
             class="w-full text-left flex justify-between items-center bg-[#f0f0f4] dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest focus:outline-none transition-colors"
@@ -228,7 +267,7 @@
             <span x-text="methodLabel"></span>
             <span class="text-[10px] text-zinc-400 ml-2">▾</span>
           </button>
-          <p x-show="methodError" x-cloak class="field-error text-xs text-red-500 mt-1 tracking-wide">Campo obrigatório</p>
+          <p x-show="methodError" x-cloak class="text-xs text-red-500 mt-1 tracking-wide">Campo obrigatório</p>
           <div x-show="methodOpen" x-cloak
             class="absolute z-20 left-0 right-0 top-full mt-px border border-zinc-300 dark:border-zinc-700 bg-[#f0f0f4] dark:bg-zinc-950">
             <template x-for="opt in methods" :key="opt.value">
@@ -258,6 +297,7 @@
       <ul class="flex flex-col">
         {% for payment in payments %}
           <li x-data="{
+                open: false,
                 editing: false,
                 methodOpen: false,
                 methods: [
@@ -267,77 +307,121 @@
                 method: '{{ payment.method }}',
                 initMethod: '{{ payment.method }}',
                 get methodLabel() { const o = this.methods.find(m => m.value === this.method); return o ? o.label : '— Método —'; },
-                cancelEdit() { this.editing = false; this.method = this.initMethod; this.methodOpen = false; this.$refs.paymentForm.reset(); }
+                reset() {
+                  this.editing = false;
+                  this.method = this.initMethod;
+                  this.methodOpen = false;
+                  this.$nextTick(() => { if (this.$refs.editPaymentForm) this.$refs.editPaymentForm.reset(); });
+                }
               }"
-              class="border-b border-zinc-300 dark:border-zinc-700">
+              x-init="$watch('open', v => { if (!v) reset(); })"
+              class="border-b border-zinc-300 dark:border-zinc-700 last:border-0">
 
-            {# Display view #}
-            <div x-show="!editing" class="py-3">
-              <div class="flex justify-between items-center text-xs">
-                <div>
-                  <span class="text-zinc-700 dark:text-zinc-300 tracking-wide">R$ {{ payment.amount|floatformat:2 }}</span>
-                  <div class="mt-0.5 text-[10px] tracking-wider text-zinc-400 dark:text-zinc-600">
-                    {{ payment.date }} · {{ payment.get_method_display }}
-                  </div>
-                </div>
-                <button @click="editing = true; $nextTick(() => $refs.paymentForm.querySelector('input').focus())"
-                  class="tracking-widest uppercase text-zinc-400 dark:text-zinc-700 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors cursor-pointer">
-                  Editar
-                </button>
-              </div>
-            </div>
+            {# List row #}
+            <button @click="open = true"
+              class="w-full flex justify-between items-center py-3 hover:opacity-60 transition-opacity text-left gap-4">
+              <span class="text-xs text-zinc-400 dark:text-zinc-600">{{ payment.date }} · {{ payment.get_method_display }}</span>
+              <span class="text-xs text-zinc-700 dark:text-zinc-300 shrink-0">R$ {{ payment.amount|floatformat:2 }}</span>
+            </button>
 
-            {# Edit form #}
-            <form x-show="editing" x-cloak x-ref="paymentForm"
-                  method="post" action="{% url 'edit_payment' person.pk payment.pk %}"
-                  class="flex flex-col gap-2 py-3"
-                  @keydown.escape.window="cancelEdit()">
-              {% csrf_token %}
-              <div class="flex gap-2 items-start">
-                <input type="text" inputmode="decimal" name="amount" value="{{ payment.amount|floatformat:2 }}" required
-                  class="w-24 bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
-                <input type="date" name="date" value="{{ payment.date|date:'Y-m-d' }}" required
-                  class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
-              </div>
-              {# Custom method select #}
-              <div class="relative" @click.outside="methodOpen = false">
-                <button type="button" @click="methodOpen = !methodOpen"
-                  class="w-full text-left flex justify-between items-center bg-[#f0f0f4] dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-widest focus:outline-none transition-colors"
-                  :class="method ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-400 dark:text-zinc-600'">
-                  <span x-text="methodLabel"></span>
-                  <span class="text-[10px] text-zinc-400 ml-2">▾</span>
-                </button>
-                <div x-show="methodOpen" x-cloak
-                  class="absolute z-20 left-0 right-0 top-full mt-px border border-zinc-300 dark:border-zinc-700 bg-[#f0f0f4] dark:bg-zinc-950">
-                  <template x-for="opt in methods" :key="opt.value">
-                    <button type="button"
-                      @click="method = opt.value; methodOpen = false;"
-                      x-text="opt.label"
-                      :class="method === opt.value ? 'text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-400'"
-                      class="w-full text-left px-2 py-1.5 text-xs tracking-widest hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors">
+            {# Detail / edit modal #}
+            <template x-teleport="body">
+              <div x-show="open" style="display:none"
+                   class="fixed inset-0 z-40 flex items-end sm:items-center justify-center sm:p-4"
+                   @keydown.escape.window="open = false">
+                <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="open = false"></div>
+                <div x-trap.inert.noscroll="open"
+                     class="relative bg-[#f0f0f4] dark:bg-zinc-900 border-t sm:border border-zinc-300 dark:border-zinc-700 w-full sm:max-w-sm max-h-[90vh] overflow-y-auto">
+
+                  {# Modal header #}
+                  <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-zinc-200 dark:border-zinc-800">
+                    <p class="text-[10px] tracking-[0.3em] uppercase text-zinc-400 dark:text-zinc-500">Pagamento</p>
+                    <button @click="open = false"
+                      class="text-xs tracking-widest text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+                      ✕
                     </button>
-                  </template>
+                  </div>
+
+                  {# Detail view #}
+                  <div x-show="!editing" class="px-6 py-5">
+                    <p class="text-3xl tracking-tight text-zinc-900 dark:text-white mb-3">R$ {{ payment.amount|floatformat:2 }}</p>
+                    <div class="flex items-center gap-3 mb-6">
+                      <span class="text-xs text-zinc-400 dark:text-zinc-600">{{ payment.date }}</span>
+                      <span class="text-[10px] tracking-widest uppercase border border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 px-1.5 py-0.5">{{ payment.get_method_display }}</span>
+                    </div>
+                    <div class="flex gap-3">
+                      <button @click="editing = true"
+                        class="border border-zinc-400 dark:border-zinc-600 px-5 py-2 text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+                        Editar
+                      </button>
+                      <button @click="open = false; $store.modal.open('Excluir pagamento', 'Pagamento de R$ {{ payment.amount|floatformat:2 }} em {{ payment.date }} será removido permanentemente.', '{% url 'delete_payment' person.pk payment.pk %}')"
+                        class="border border-zinc-300 dark:border-zinc-700 px-5 py-2 text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:border-red-400 hover:text-red-400 transition-colors cursor-pointer">
+                        Excluir
+                      </button>
+                    </div>
+                  </div>
+
+                  {# Edit form #}
+                  <form x-show="editing" x-cloak x-ref="editPaymentForm"
+                        method="post" action="{% url 'edit_payment' person.pk payment.pk %}"
+                        class="px-6 py-5 flex flex-col gap-3">
+                    {% csrf_token %}
+                    <div class="flex gap-3">
+                      <div>
+                        <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Valor</p>
+                        <input type="text" inputmode="decimal" name="amount" value="{{ payment.amount|floatformat:2 }}" required
+                          class="w-28 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-wider text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
+                      </div>
+                      <div class="flex-1">
+                        <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Data</p>
+                        <input type="date" name="date" value="{{ payment.date|date:'Y-m-d' }}" required
+                          class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-wider text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
+                      </div>
+                    </div>
+                    <div>
+                      <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Método</p>
+                      <div class="relative" @click.outside="methodOpen = false">
+                        <button type="button" @click="methodOpen = !methodOpen"
+                          class="w-full text-left flex justify-between items-center bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest focus:outline-none transition-colors"
+                          :class="method ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-400 dark:text-zinc-600'">
+                          <span x-text="methodLabel"></span>
+                          <span class="text-[10px] text-zinc-400 ml-2">▾</span>
+                        </button>
+                        <div x-show="methodOpen" x-cloak
+                          class="absolute z-10 left-0 right-0 top-full mt-px border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950">
+                          <template x-for="opt in methods" :key="opt.value">
+                            <button type="button"
+                              @click="method = opt.value; methodOpen = false;"
+                              x-text="opt.label"
+                              :class="method === opt.value ? 'text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-400'"
+                              class="w-full text-left px-3 py-2 text-xs tracking-widest hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+                            </button>
+                          </template>
+                        </div>
+                        <input type="hidden" name="method" :value="method" />
+                      </div>
+                    </div>
+                    <div class="flex justify-between items-center pt-1">
+                      <div class="flex gap-3">
+                        <button type="submit"
+                          class="border border-zinc-400 dark:border-zinc-600 px-5 py-2 text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+                          Salvar
+                        </button>
+                        <button type="button" @click="editing = false"
+                          class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors cursor-pointer">
+                          Cancelar
+                        </button>
+                      </div>
+                      <button type="button"
+                        @click="open = false; $store.modal.open('Excluir pagamento', 'Pagamento de R$ {{ payment.amount|floatformat:2 }} em {{ payment.date }} será removido permanentemente.', '{% url 'delete_payment' person.pk payment.pk %}')"
+                        class="text-xs tracking-widest uppercase text-zinc-300 dark:text-zinc-700 hover:text-red-400 transition-colors cursor-pointer">
+                        Excluir
+                      </button>
+                    </div>
+                  </form>
                 </div>
-                <input type="hidden" name="method" :value="method" />
               </div>
-              <div class="flex justify-between items-center mt-1">
-                <div class="flex gap-3">
-                  <button type="submit"
-                    class="text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
-                    Salvar
-                  </button>
-                  <button type="button" @click="cancelEdit()"
-                    class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors cursor-pointer">
-                    Cancelar
-                  </button>
-                </div>
-                <button type="button"
-                  @click="$store.modal.open('Excluir pagamento', 'Pagamento de R$ {{ payment.amount|floatformat:2 }} em {{ payment.date }} será removido permanentemente.', '{% url 'delete_payment' person.pk payment.pk %}')"
-                  class="text-xs tracking-widest uppercase text-zinc-300 dark:text-zinc-700 hover:text-red-400 dark:hover:text-red-500 transition-colors cursor-pointer">
-                  Excluir
-                </button>
-              </div>
-            </form>
+            </template>
           </li>
         {% endfor %}
       </ul>
@@ -375,7 +459,6 @@
               class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
           </div>
         </div>
-        {# Custom method select #}
         <div class="relative" @click.outside="methodOpen = false">
           <button type="button" @click="methodOpen = !methodOpen"
             class="w-full text-left flex justify-between items-center bg-[#f0f0f4] dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest focus:outline-none transition-colors"
@@ -383,7 +466,7 @@
             <span x-text="methodLabel"></span>
             <span class="text-[10px] text-zinc-400 ml-2">▾</span>
           </button>
-          <p x-show="methodError" x-cloak class="field-error text-xs text-red-500 mt-1 tracking-wide">Campo obrigatório</p>
+          <p x-show="methodError" x-cloak class="text-xs text-red-500 mt-1 tracking-wide">Campo obrigatório</p>
           <div x-show="methodOpen" x-cloak
             class="absolute z-20 left-0 right-0 top-full mt-px border border-zinc-300 dark:border-zinc-700 bg-[#f0f0f4] dark:bg-zinc-950">
             <template x-for="opt in methods" :key="opt.value">
