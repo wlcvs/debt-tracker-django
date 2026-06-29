@@ -13,7 +13,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from .forms import CreditCardForm, DebtForm, PaymentForm, PersonForm
-from .models import CreditCard, Debt, Payment, Person, Statement
+from .models import CreditCard, Debt, Payment, Person, Statement, TrainingExample
 
 
 class AppLoginView(LoginView):
@@ -291,25 +291,27 @@ def import_statement(request):
         return JsonResponse({"error": "O arquivo deve ser um PDF."}, status=400)
 
     try:
-        from .importers import detect_and_parse
+        from .ml.extractor import run_algorithm, run_model
         pdf_bytes = pdf_file.read()
-        pdf_file.seek(0)
-        bank, transactions = detect_and_parse(pdf_file)
 
-        Statement.objects.create(
-            user=request.user,
-            bank=bank,
-            filename=pdf_file.name,
-            pdf_data=pdf_bytes,
-            transaction_count=len(transactions),
-        )
+        bank, algo_results = run_algorithm(pdf_bytes)
+        model_results = run_model(pdf_bytes, bank)
 
+        if algo_results:
+            Statement.objects.create(
+                user=request.user,
+                bank=bank,
+                filename=pdf_file.name,
+                pdf_data=pdf_bytes,
+                transaction_count=len(algo_results),
+            )
+
+        from .ml import is_trained
         return JsonResponse({
             "bank": bank,
-            "transactions": [
-                {"index": i, **t.to_dict()}
-                for i, t in enumerate(transactions)
-            ],
+            "algorithm": algo_results,
+            "model": model_results,
+            "model_trained": is_trained(),
         })
     except Exception as e:
         return JsonResponse({"error": f"Erro ao processar o PDF: {e}"}, status=400)
@@ -364,21 +366,57 @@ def save_imported(request):
 
 @login_required
 def reopen_statement(request, stmt_id):
-    import io
     stmt = get_object_or_404(Statement, pk=stmt_id, user=request.user)
-    from .importers import detect_and_parse
-    pdf_file = io.BytesIO(bytes(stmt.pdf_data))
     try:
-        bank, transactions = detect_and_parse(pdf_file)
+        from .ml.extractor import run_algorithm, run_model
+        from .ml import is_trained
+        pdf_bytes = bytes(stmt.pdf_data)
+        bank, algo_results = run_algorithm(pdf_bytes)
+        model_results = run_model(pdf_bytes, bank)
         return JsonResponse({
             "bank": bank,
-            "transactions": [
-                {"index": i, **t.to_dict()}
-                for i, t in enumerate(transactions)
-            ],
+            "algorithm": algo_results,
+            "model": model_results,
+            "model_trained": is_trained(),
         })
     except Exception as e:
         return JsonResponse({"error": f"Erro ao reabrir extrato: {e}"}, status=400)
+
+
+@login_required
+@require_POST
+def train_model(request):
+    """Recebe exemplos rotulados pelo usuário e retreina o modelo."""
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Dados inválidos."}, status=400)
+
+    examples = data.get("examples", [])
+    bank = data.get("bank", "")
+
+    saved = 0
+    for ex in examples:
+        line = ex.get("line_raw", "").strip()
+        if not line:
+            continue
+        TrainingExample.objects.create(
+            line=line,
+            bank=bank,
+            is_transaction=bool(ex.get("is_transaction", False)),
+            date=ex.get("date") or None,
+            amount=Decimal(str(ex["amount"])) if ex.get("amount") else None,
+            description=(ex.get("description") or "")[:500],
+            source=ex.get("source", "user"),
+        )
+        saved += 1
+
+    # Retreina se há exemplos suficientes
+    all_examples = list(TrainingExample.objects.values("line", "bank", "is_transaction"))
+    from .ml import train
+    trained_on = train(all_examples)
+
+    return JsonResponse({"saved": saved, "trained_on": trained_on})
 
 
 @login_required

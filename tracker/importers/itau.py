@@ -1,33 +1,31 @@
 """
-Itaú bank statement (extrato) parser.
+Itaú parser — suporta dois formatos:
+- Extrato de conta corrente: tabela com colunas Data / Histórico / Valor D/C
+- Fatura de cartão: texto com seção "DATA ESTABELECIMENTO VALOREMR$"
 
-Itaú PDFs typically have a tabular format:
-  Data        Histórico                      Docto     Valor
-  10/01/2024  PIX Enviado - Nome             123456    1.234,56 D
-
-'D' = débito (saída), 'C' = crédito (entrada).
-We include both; the admin decides what's relevant.
+Nota: faturas têm layout de duas colunas mescladas pelo pdfplumber;
+a transação real fica na coluna esquerda, encargos na direita.
 """
 import re
-from datetime import date
+from datetime import date as Date
 
 from .base import (
     Transaction, AMOUNT_RE, DATE_SLASH_RE,
     parse_br_amount, parse_br_date,
-    extract_tables,
+    extract_tables, extract_text_pages,
 )
 
 DEBIT_CREDIT_RE = re.compile(r"(\d{1,3}(?:\.\d{3})*,\d{2})\s*([DC])\b")
+_TX_START_RE = re.compile(r"^(\d{2}/\d{2})\s+(.+)")
 
 
 def parse(pdf_file) -> list[Transaction]:
-    # Fatura do Itaú (boleto/resumo) não contém transações individuais listadas.
-    # O texto fica comprimido (sem espaços) e não há tabela de lançamentos.
-    from .base import extract_text_pages
     pages_text = extract_text_pages(pdf_file)
-    full = ''.join(pages_text)
-    if 'Totaldestafatura' in full or 'ResumodafaturaemR$' in full:
-        return []
+    full = "\n".join(pages_text)
+
+    # Fatura de cartão: tem seção "DATA ESTABELECIMENTO"
+    if "DATA" in full and "ESTABELECIMENTO" in full:
+        return _parse_fatura(pages_text)
 
     pdf_file.seek(0)
     transactions = _parse_tables(pdf_file)
@@ -36,6 +34,91 @@ def parse(pdf_file) -> list[Transaction]:
 
     pdf_file.seek(0)
     return _parse_text(pdf_file)
+
+
+def _parse_fatura(pages_text: list[str]) -> list[Transaction]:
+    """Extrai lançamentos da seção de compras/saques da fatura Itaú."""
+    transactions = []
+    year = Date.today().year
+
+    for page in pages_text:
+        # Tenta capturar o ano da página
+        y_m = re.search(r"\b(20\d{2})\b", page)
+        if y_m:
+            year = int(y_m.group(1))
+
+        in_tx_section = False
+        pending_date = None
+        pending_desc = ""
+        pending_amount = None
+
+        for line in page.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+
+            # Início da seção de lançamentos
+            if "DATA" in line and "ESTABELECIMENTO" in line:
+                in_tx_section = True
+                continue
+
+            # Fim da seção (subtotais)
+            if in_tx_section and re.search(r"Totalandos|Lançamentosno|LTotaldos|Totaldoslançamentos", line):
+                _flush(transactions, pending_date, pending_desc, pending_amount)
+                pending_date = pending_desc = None
+                pending_amount = None
+                in_tx_section = False
+                continue
+
+            if not in_tx_section:
+                continue
+
+            m = _TX_START_RE.match(line)
+            if m:
+                # Salva transação anterior
+                _flush(transactions, pending_date, pending_desc, pending_amount)
+
+                date_str, rest = m.group(1), m.group(2)
+                amounts = AMOUNT_RE.findall(rest)
+                if amounts:
+                    pending_amount = parse_br_amount(amounts[0])
+                    # Descrição é tudo antes do primeiro valor
+                    cut = rest.index(amounts[0])
+                    pending_desc = rest[:cut].strip()
+                else:
+                    pending_desc = rest.strip()
+                    pending_amount = None
+
+                dd, mm = date_str.split("/")
+                try:
+                    pending_date = Date(year, int(mm), int(dd))
+                except ValueError:
+                    pending_date = None
+
+            elif pending_date:
+                # Linha de continuação: pega só as palavras em CAIXA ALTA antes
+                # do primeiro token com letras minúsculas (coluna direita comprimida)
+                # ex: "MORADIA.FRANCODAROC ETotaldeencargosemR$ 322,59"
+                #      → "MORADIA.FRANCODAROC"
+                clean_words = []
+                for w in line.split():
+                    if AMOUNT_RE.fullmatch(w):
+                        break  # valor → coluna direita
+                    if re.search(r"[a-z]", w):
+                        break  # texto comprimido (camelCase) → coluna direita
+                    clean_words.append(w)
+                if clean_words:
+                    pending_desc = (pending_desc + " " + " ".join(clean_words)).strip()
+
+        _flush(transactions, pending_date, pending_desc, pending_amount)
+
+    return transactions
+
+
+def _flush(transactions, date, desc, amount):
+    if date and amount and amount > 0:
+        desc = (desc or "Transação").strip(" -•")
+        transactions.append(Transaction(date=date, description=desc, amount=amount))
 
 
 def _parse_tables(pdf_file) -> list[Transaction]:
@@ -54,7 +137,6 @@ def _parse_tables(pdf_file) -> list[Transaction]:
 
 def _row_to_transaction(row: list[str]) -> Transaction | None:
     raw = " ".join(row)
-
     m = DATE_SLASH_RE.search(raw)
     if not m:
         return None
@@ -74,10 +156,7 @@ def _row_to_transaction(row: list[str]) -> Transaction | None:
         return None
 
     desc = _clean_description(raw)
-    if not desc:
-        return None
-
-    return Transaction(date=txn_date, description=desc, amount=amount)
+    return Transaction(date=txn_date, description=desc, amount=amount) if desc else None
 
 
 def _parse_text(pdf_file) -> list[Transaction]:
