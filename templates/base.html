@@ -72,10 +72,10 @@
       if (e.target._errEl && e.target.validity.valid) e.target._errEl.textContent = '';
     }, true);
 
-    document.addEventListener('blur', (e) => {
+    document.addEventListener('focusout', (e) => {
       const el = e.target;
       if (el._errEl) { el._errEl.remove(); el._errEl = null; }
-    }, true);
+    });
 
     function resetForm(form) {
       if (!form) return;
