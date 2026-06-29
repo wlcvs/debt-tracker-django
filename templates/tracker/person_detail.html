@@ -42,15 +42,24 @@
 
   {# Actions #}
   <div class="flex items-center gap-4 sm:gap-6 flex-wrap">
-    <button x-data="{ shared: false }"
-      @click="
-        const url = '{{ request.scheme }}://{{ request.get_host }}/public/{{ person.pk }}/';
-        if (navigator.share) {
-          navigator.share({ title: '{{ person.name|escapejs }}', url }).catch(() => {});
-        } else {
-          navigator.clipboard.writeText(url).then(() => { shared = true; setTimeout(() => shared = false, 2000) });
+    <button x-data="{
+        shared: false,
+        share() {
+          const url = '{{ request.scheme }}://{{ request.get_host }}/public/{{ person.pk }}/';
+          if (navigator.share) {
+            navigator.share({ url }).catch(() => {});
+          } else {
+            const el = document.createElement('textarea');
+            el.value = url;
+            el.style.position = 'fixed'; el.style.opacity = '0';
+            document.body.appendChild(el); el.focus(); el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            this.shared = true; setTimeout(() => this.shared = false, 2000);
+          }
         }
-      "
+      }"
+      @click="share()"
       x-text="shared ? 'Link copiado!' : 'Compartilhar'"
       class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
     </button>
@@ -89,7 +98,7 @@
               class="border-b border-zinc-300 dark:border-zinc-700">
 
             {# Display view #}
-            <div x-show="!editing" class="py-2">
+            <div x-show="!editing" class="py-3">
               <div class="flex justify-between items-start text-xs gap-2">
                 <div class="min-w-0">
                   <div class="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
@@ -108,17 +117,10 @@
                 </div>
                 <div class="flex items-center gap-4 shrink-0">
                   <span class="tracking-tight text-zinc-700 dark:text-zinc-300">R$ {{ debt.amount|floatformat:2 }}</span>
-                  <div class="flex gap-3">
-                    <button @click="editing = true; $nextTick(() => $refs.debtForm.querySelector('input').focus())"
-                      class="tracking-widest uppercase text-zinc-400 dark:text-zinc-700 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors cursor-pointer">
-                      Editar
-                    </button>
-                    <button
-                      @click="$store.modal.open('Excluir dívida', '&quot;{{ debt.description|escapejs }}&quot; será removida permanentemente.', '{% url 'delete_debt' person.pk debt.pk %}')"
-                      class="tracking-widest uppercase text-zinc-400 dark:text-zinc-700 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors cursor-pointer">
-                      Excluir
-                    </button>
-                  </div>
+                  <button @click="editing = true; $nextTick(() => $refs.debtForm.querySelector('input').focus())"
+                    class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-700 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors cursor-pointer">
+                    Editar
+                  </button>
                 </div>
               </div>
             </div>
@@ -126,21 +128,17 @@
             {# Edit form #}
             <form x-show="editing" x-cloak x-ref="debtForm"
                   method="post" action="{% url 'edit_debt' person.pk debt.pk %}"
-                  class="flex flex-col gap-1 py-2"
+                  class="flex flex-col gap-2 py-3"
                   @submit="if (!method) { $event.preventDefault(); methodError = true; return; } methodError = false;"
                   @keydown.escape.window="cancelEdit()">
               {% csrf_token %}
               <input type="text" name="description" value="{{ debt.description }}" required
                 class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
               <div class="flex gap-2 flex-wrap items-start">
-                <div>
-                  <input type="text" inputmode="decimal" name="amount" value="{{ debt.amount|floatformat:2 }}" required
-                    class="w-24 bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
-                </div>
-                <div>
-                  <input type="date" name="date" value="{{ debt.date|date:'Y-m-d' }}" required
-                    class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
-                </div>
+                <input type="text" inputmode="decimal" name="amount" value="{{ debt.amount|floatformat:2 }}" required
+                  class="w-24 bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
+                <input type="date" name="date" value="{{ debt.date|date:'Y-m-d' }}" required
+                  class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
               </div>
               {# Custom method select #}
               <div class="relative" @click.outside="methodOpen = false">
@@ -164,14 +162,21 @@
                 </div>
                 <input type="hidden" name="payment_method" :value="method" />
               </div>
-              <div class="flex gap-3 mt-1">
-                <button type="submit"
-                  class="text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
-                  Salvar
-                </button>
-                <button type="button" @click="cancelEdit()"
-                  class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors cursor-pointer">
-                  Cancelar
+              <div class="flex justify-between items-center mt-1">
+                <div class="flex gap-3">
+                  <button type="submit"
+                    class="text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+                    Salvar
+                  </button>
+                  <button type="button" @click="cancelEdit()"
+                    class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors cursor-pointer">
+                    Cancelar
+                  </button>
+                </div>
+                <button type="button"
+                  @click="$store.modal.open('Excluir dívida', '&quot;{{ debt.description|escapejs }}&quot; será removida permanentemente.', '{% url 'delete_debt' person.pk debt.pk %}')"
+                  class="text-xs tracking-widest uppercase text-zinc-300 dark:text-zinc-700 hover:text-red-400 dark:hover:text-red-500 transition-colors cursor-pointer">
+                  Excluir
                 </button>
               </div>
             </form>
@@ -208,10 +213,8 @@
         <input type="text" name="description" placeholder="DESCRIÇÃO" required
           class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest placeholder:text-zinc-400 dark:placeholder:text-zinc-600 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
         <div class="flex gap-2 items-start">
-          <div>
-            <input type="text" inputmode="decimal" name="amount" placeholder="VALOR" required
-              class="w-28 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest placeholder:text-zinc-400 dark:placeholder:text-zinc-600 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
-          </div>
+          <input type="text" inputmode="decimal" name="amount" placeholder="VALOR" required
+            class="w-28 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest placeholder:text-zinc-400 dark:placeholder:text-zinc-600 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
           <div class="flex-1">
             <input type="date" name="date" required
               class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
@@ -269,48 +272,32 @@
               class="border-b border-zinc-300 dark:border-zinc-700">
 
             {# Display view #}
-            <div x-show="!editing" class="py-2">
-              <div class="flex justify-between items-center text-xs text-zinc-600 dark:text-zinc-300">
+            <div x-show="!editing" class="py-3">
+              <div class="flex justify-between items-center text-xs">
                 <div>
-                  <span class="text-zinc-500 dark:text-zinc-400">{{ payment.date }}</span>
-                  <div class="mt-0.5">
-                    <span class="text-[10px] tracking-wider text-zinc-400 dark:text-zinc-600">
-                      {{ payment.get_method_display }}
-                    </span>
+                  <span class="text-zinc-700 dark:text-zinc-300 tracking-wide">R$ {{ payment.amount|floatformat:2 }}</span>
+                  <div class="mt-0.5 text-[10px] tracking-wider text-zinc-400 dark:text-zinc-600">
+                    {{ payment.date }} · {{ payment.get_method_display }}
                   </div>
                 </div>
-                <div class="flex items-center gap-4 shrink-0">
-                  <span class="tracking-tight">R$ {{ payment.amount|floatformat:2 }}</span>
-                  <div class="flex gap-3">
-                    <button @click="editing = true; $nextTick(() => $refs.paymentForm.querySelector('input').focus())"
-                      class="tracking-widest uppercase text-zinc-400 dark:text-zinc-700 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors cursor-pointer">
-                      Editar
-                    </button>
-                    <button
-                      @click="$store.modal.open('Excluir pagamento', 'Pagamento de R$ {{ payment.amount|floatformat:2 }} em {{ payment.date }} será removido permanentemente.', '{% url 'delete_payment' person.pk payment.pk %}')"
-                      class="tracking-widest uppercase text-zinc-400 dark:text-zinc-700 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors cursor-pointer">
-                      Excluir
-                    </button>
-                  </div>
-                </div>
+                <button @click="editing = true; $nextTick(() => $refs.paymentForm.querySelector('input').focus())"
+                  class="tracking-widest uppercase text-zinc-400 dark:text-zinc-700 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors cursor-pointer">
+                  Editar
+                </button>
               </div>
             </div>
 
             {# Edit form #}
             <form x-show="editing" x-cloak x-ref="paymentForm"
                   method="post" action="{% url 'edit_payment' person.pk payment.pk %}"
-                  class="flex flex-col gap-1 py-2"
+                  class="flex flex-col gap-2 py-3"
                   @keydown.escape.window="cancelEdit()">
               {% csrf_token %}
               <div class="flex gap-2 items-start">
-                <div>
-                  <input type="text" inputmode="decimal" name="amount" value="{{ payment.amount|floatformat:2 }}" required
-                    class="w-24 bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
-                </div>
-                <div>
-                  <input type="date" name="date" value="{{ payment.date|date:'Y-m-d' }}" required
-                    class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
-                </div>
+                <input type="text" inputmode="decimal" name="amount" value="{{ payment.amount|floatformat:2 }}" required
+                  class="w-24 bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
+                <input type="date" name="date" value="{{ payment.date|date:'Y-m-d' }}" required
+                  class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
               </div>
               {# Custom method select #}
               <div class="relative" @click.outside="methodOpen = false">
@@ -333,14 +320,21 @@
                 </div>
                 <input type="hidden" name="method" :value="method" />
               </div>
-              <div class="flex gap-3 mt-1">
-                <button type="submit"
-                  class="text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
-                  Salvar
-                </button>
-                <button type="button" @click="cancelEdit()"
-                  class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors cursor-pointer">
-                  Cancelar
+              <div class="flex justify-between items-center mt-1">
+                <div class="flex gap-3">
+                  <button type="submit"
+                    class="text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+                    Salvar
+                  </button>
+                  <button type="button" @click="cancelEdit()"
+                    class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors cursor-pointer">
+                    Cancelar
+                  </button>
+                </div>
+                <button type="button"
+                  @click="$store.modal.open('Excluir pagamento', 'Pagamento de R$ {{ payment.amount|floatformat:2 }} em {{ payment.date }} será removido permanentemente.', '{% url 'delete_payment' person.pk payment.pk %}')"
+                  class="text-xs tracking-widest uppercase text-zinc-300 dark:text-zinc-700 hover:text-red-400 dark:hover:text-red-500 transition-colors cursor-pointer">
+                  Excluir
                 </button>
               </div>
             </form>
@@ -374,10 +368,8 @@
             @submit="if (!method) { $event.preventDefault(); methodError = true; return; } methodError = false;">
         {% csrf_token %}
         <div class="flex gap-2 items-start">
-          <div>
-            <input type="text" inputmode="decimal" name="amount" placeholder="VALOR" required
-              class="w-28 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest placeholder:text-zinc-400 dark:placeholder:text-zinc-600 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
-          </div>
+          <input type="text" inputmode="decimal" name="amount" placeholder="VALOR" required
+            class="w-28 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest placeholder:text-zinc-400 dark:placeholder:text-zinc-600 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
           <div class="flex-1">
             <input type="date" name="date" required
               class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
