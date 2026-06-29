@@ -71,6 +71,15 @@
       if (amtMin) { const f = this.parseAmtFilter(amtMin); if (!isNaN(f.val) && (f.isInt ? Math.floor(n) : n) < f.val) return false; }
       if (amtMax) { const f = this.parseAmtFilter(amtMax); if (!isNaN(f.val) && (f.isInt ? Math.floor(n) : n) > f.val) return false; }
       return true;
+    },
+
+    init() {
+      this.$watch('showDebtFilters', v => {
+        if (!v) { this.debtSearch = ''; this.debtDateFrom = ''; this.debtDateTo = ''; this.debtAmountMin = ''; this.debtAmountMax = ''; }
+      });
+      this.$watch('showPaymentFilters', v => {
+        if (!v) { this.paymentSearch = ''; this.paymentDateFrom = ''; this.paymentDateTo = ''; this.paymentAmountMin = ''; this.paymentAmountMax = ''; }
+      });
     }
   }">
 
@@ -87,8 +96,8 @@
       {# ── Debts ── #}
       <div class="mb-8">
         <div
-          @click.outside="if (showDebtFilters) { showDebtFilters = false; debtSearch = ''; debtDateFrom = ''; debtDateTo = ''; debtAmountMin = ''; debtAmountMax = '' }"
-          @keydown.escape.window="if (showDebtFilters) { showDebtFilters = false; debtSearch = ''; debtDateFrom = ''; debtDateTo = ''; debtAmountMin = ''; debtAmountMax = '' }">
+          @click.outside="showDebtFilters = false"
+          @keydown.escape.window="showDebtFilters = false">
           <div class="flex items-center justify-between mb-3">
             <p class="text-xs tracking-[0.25em] uppercase text-zinc-400 dark:text-zinc-500">Dívidas</p>
             <button type="button" @click="showDebtFilters = !showDebtFilters"
@@ -186,8 +195,8 @@
       {# ── Payments ── #}
       <div class="mb-8">
         <div
-          @click.outside="if (showPaymentFilters) { showPaymentFilters = false; paymentSearch = ''; paymentDateFrom = ''; paymentDateTo = ''; paymentAmountMin = ''; paymentAmountMax = '' }"
-          @keydown.escape.window="if (showPaymentFilters) { showPaymentFilters = false; paymentSearch = ''; paymentDateFrom = ''; paymentDateTo = ''; paymentAmountMin = ''; paymentAmountMax = '' }">
+          @click.outside="showPaymentFilters = false"
+          @keydown.escape.window="showPaymentFilters = false">
           <div class="flex items-center justify-between mb-3">
             <p class="text-xs tracking-[0.25em] uppercase text-zinc-400 dark:text-zinc-500">Pagamentos</p>
             <button type="button" @click="showPaymentFilters = !showPaymentFilters"
