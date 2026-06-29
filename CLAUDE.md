@@ -73,6 +73,8 @@ docker-compose.yml
 /dashboard/person/<uuid>/payment/add/
 /dashboard/person/<uuid>/payment/<id>/edit|delete/
 /dashboard/credit-card/add|edit|delete/
+/dashboard/import/         → POST PDF → returns bank + transactions JSON
+/dashboard/import/save/    → POST selected items → creates Debt/Payment records
 ```
 
 ## Models
@@ -118,6 +120,17 @@ Payment    — amount (Decimal 10,2), description (optional), date, method (PIX|
 - Collapsible filter panels: put `@click.outside` and `@keydown.escape.window` on a **wrapper div** that contains both the toggle button and the panel — never on the panel alone, or the toggle click immediately re-closes it.
 - Incremental filtering with `x-show`: pass reactive state variables as explicit arguments to the filter function so Alpine tracks them as dependencies. Accessing them only inside the function body via `this.x` is not reliable.
 - Number filters: when the user omits a decimal point, compare by `Math.floor(amount)` to avoid excluding e.g. `222.70` when the input is `222`.
+- **Embedding JSON in `x-data`**: never put raw Django JSON directly in an HTML attribute. Use `{{ var|json_script:"element-id" }}` to output a `<script type="application/json">` tag, then read it in JS with `JSON.parse(document.getElementById('element-id').textContent)`. Raw JSON breaks the attribute because its `"` characters terminate the attribute string.
+- **Triggering modals across Alpine scope boundaries**: use plain `onclick="window.dispatchEvent(new CustomEvent('event-name'))"` on the trigger button and `@event-name.window="open = true"` on the modal component. Avoids dependency on Alpine context in the trigger.
+
+## Bank statement import
+
+PDF upload feature at `/dashboard/import/`. Logic lives in `tracker/importers/`:
+- `base.py` — `Transaction` dataclass, BR amount/date parsers, pdfplumber utils
+- `nubank.py`, `itau.py`, `mercadopago.py`, `bradesco.py` — bank-specific parsers (table-first, text fallback)
+- `__init__.py` — `detect_and_parse(pdf_file)` auto-detects bank from PDF content
+
+Store local PDFs in `extratos/` (gitignored for `*.pdf` / `*.PDF`). Parsers may need adjustment per actual PDF format — test by dropping a PDF in `extratos/` and hitting the upload UI.
 
 ## References
 

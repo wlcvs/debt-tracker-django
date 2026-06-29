@@ -13,7 +13,7 @@
           class="text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors cursor-pointer">
         </button>
       </div>
-      <button @click="$dispatch('open-import')"
+      <button onclick="window.dispatchEvent(new CustomEvent('open-import'))"
         class="border border-zinc-400 dark:border-zinc-600 px-4 py-2 text-[10px] tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer whitespace-nowrap">
         Importar extrato
       </button>
@@ -151,7 +151,8 @@
 </div>
 
 {# ── Import modal ── #}
-<div x-data="importModal('{{ csrf_token }}', {% autoescape off %}{{ people_json }}{% endautoescape %})"
+{{ people_json|json_script:"import-modal-people" }}
+<div x-data="importModal('{{ csrf_token }}')"
      @open-import.window="open = true"
      @keydown.escape.window="if (open) { open = false; reset(); }">
 
@@ -314,7 +315,8 @@
     );
   }
 
-  function importModal(csrfToken, people) {
+  function importModal(csrfToken) {
+    const people = JSON.parse(document.getElementById('import-modal-people').textContent || '[]');
     return {
       open: false,
       step: 'upload',   // 'upload' | 'processing' | 'review' | 'saving'
