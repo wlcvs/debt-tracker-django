@@ -1,138 +1,124 @@
 """
-Nubank credit card statement (fatura) parser.
-
-Nubank PDFs typically have transactions listed as:
-  DD MMM   Descrição                        R$ X.XXX,XX
-
-Some versions use a table, others use free text.
-The parser tries table extraction first, then falls back to text parsing.
+Nubank parser — dois formatos distintos:
+- Conta corrente (extrato): texto com seções "DD MMM YYYY Total de..."
+- Cartão de crédito (fatura): tabela coluna única por linha de transação
 """
 import re
-from datetime import date
+from datetime import date as Date
 from decimal import Decimal
 
-from .base import (
-    Transaction, AMOUNT_RE, DATE_PT_RE, MONTHS_PT,
-    parse_br_amount, parse_br_date,
-    extract_text_pages, extract_tables,
+from .base import Transaction, MONTHS_PT, parse_br_amount, extract_text_pages, extract_tables
+
+# Conta corrente
+_DATE_HEADER_RE = re.compile(r'^(\d{2}) ([A-Z]{3}) (\d{4})')
+_LINE_END_AMOUNT_RE = re.compile(r'\s(\d{1,3}(?:\.\d{3})*,\d{2})$')
+
+_CC_SKIP = (
+    'Saldo inicial', 'Saldo final', 'Rendimento', 'Total de', 'Movimentações',
+    'Tem alguma dúvida', 'Caso a solução', 'Extrato gerado', 'Nu Financeira',
+    'Nu Pagamentos', 'CNPJ:', 'CPF', 'O saldo', 'Não nos responsabilizamos',
+    'Asseguramos', 'Wallacy Vieira da Silva', 'Agência 0001',
 )
 
-# Nubank sometimes formats dates as "10 JAN" or "10/01"
-DATE_NUBANK_RE = re.compile(
-    r"\b(\d{1,2})\s+(JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)\b",
-    re.IGNORECASE,
-)
-DATE_SLASH_RE = re.compile(r"\b(\d{2})/(\d{2})(?:/(\d{2,4}))?\b")
+# Cartão: "04 MAI •••• 8119 Descrição [- Parcela X/Y] R$ 68,59"
+_CARD_TX_RE = re.compile(r'^(\d{2} [A-Z]{3})\s+[•]+\s+\d+\s+(.+?)\s+R\$\s+([\d.,]+)')
 
 
 def parse(pdf_file) -> list[Transaction]:
-    # Try table-based extraction first
-    transactions = _parse_tables(pdf_file)
-    if transactions:
-        return transactions
-
-    # Fallback: text-based line parsing
+    pages_text = extract_text_pages(pdf_file)
+    if 'Movimentações' in '\n'.join(pages_text):
+        return _parse_conta_corrente(pages_text)
     pdf_file.seek(0)
-    return _parse_text(pdf_file)
+    return _parse_cartao(pdf_file, pages_text)
 
 
-def _parse_tables(pdf_file) -> list[Transaction]:
-    import pdfplumber
-    transactions = []
-    with pdfplumber.open(pdf_file) as pdf:
-        for page in pdf.pages:
-            for table in page.extract_tables():
-                for row in table:
-                    row = [str(c or "").strip() for c in row]
-                    txn = _row_to_transaction(row)
-                    if txn:
-                        transactions.append(txn)
-    return transactions
+# ── Conta corrente ─────────────────────────────────────────────────────────────
 
-
-def _row_to_transaction(row: list[str]) -> Transaction | None:
-    """Try to extract a Transaction from a table row."""
-    raw = " ".join(row)
-
-    amounts = AMOUNT_RE.findall(raw)
-    if not amounts:
-        return None
-
-    # Last amount column is typically the charge amount
-    amount = parse_br_amount(amounts[-1])
-    if amount is None or amount <= 0:
-        return None
-
-    txn_date = _find_date(raw)
-    if txn_date is None:
-        return None
-
-    # Description: everything that's not a date or amount
-    desc = _clean_description(raw, amounts)
-    if not desc:
-        return None
-
-    return Transaction(date=txn_date, description=desc, amount=amount)
-
-
-def _parse_text(pdf_file) -> list[Transaction]:
-    """Line-by-line text parsing for Nubank PDFs."""
-    import pdfplumber
+def _parse_conta_corrente(pages_text: list[str]) -> list[Transaction]:
     transactions = []
     current_date = None
 
-    with pdfplumber.open(pdf_file) as pdf:
-        for page in pdf.pages:
-            text = page.extract_text() or ""
-            lines = [l.strip() for l in text.splitlines() if l.strip()]
-            i = 0
-            while i < len(lines):
-                line = lines[i]
+    for page in pages_text:
+        for line in page.splitlines():
+            line = line.strip()
+            if not line:
+                continue
 
-                date_match = DATE_NUBANK_RE.search(line) or DATE_SLASH_RE.search(line)
-                if date_match:
-                    current_date = _find_date(line)
+            # "01 MAI 2026 Total de saídas - 92,49"
+            m = _DATE_HEADER_RE.match(line)
+            if m and 'Total de' in line:
+                month = MONTHS_PT.get(m.group(2))
+                if month:
+                    try:
+                        current_date = Date(int(m.group(3)), month, int(m.group(1)))
+                    except ValueError:
+                        pass
+                continue
 
-                amounts = AMOUNT_RE.findall(line)
-                if amounts and current_date:
-                    amount = parse_br_amount(amounts[-1])
-                    if amount and amount > 0:
-                        desc = _clean_description(line, amounts)
-                        if desc:
-                            transactions.append(Transaction(
-                                date=current_date,
-                                description=desc,
-                                amount=amount,
-                            ))
-                i += 1
+            if any(line.startswith(s) for s in _CC_SKIP):
+                continue
+
+            # Linha de transação: termina com valor BR
+            am = _LINE_END_AMOUNT_RE.search(line)
+            if am and current_date:
+                amount = parse_br_amount(am.group(1))
+                if amount and amount >= Decimal('0.01'):
+                    desc = _clean_cc_desc(line[:am.start()].strip())
+                    if desc:
+                        transactions.append(Transaction(current_date, desc, amount))
 
     return transactions
 
 
-def _find_date(text: str) -> date | None:
-    m = DATE_NUBANK_RE.search(text)
-    if m:
-        day = int(m.group(1))
-        month = MONTHS_PT.get(m.group(2).upper(), 0)
-        if month:
-            return parse_br_date(day, month)
-
-    m = DATE_SLASH_RE.search(text)
-    if m:
-        day, month = int(m.group(1)), int(m.group(2))
-        year = int(m.group(3)) if m.group(3) else None
-        if 1 <= day <= 31 and 1 <= month <= 12:
-            return parse_br_date(day, month, year)
-
-    return None
+def _clean_cc_desc(text: str) -> str:
+    text = re.sub(r'\s*-\s*•+\.\d+\.\d+-••', '', text)                    # CPF
+    text = re.sub(r'\s*-\s*\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}', '', text)   # CNPJ
+    text = re.sub(r'\s+-\s+[A-Z]{2}[\w\s.]+\(\d+\).*$', '', text)         # roteamento bancário
+    text = re.sub(r'\s+-\s+[A-Z]+$', '', text)                             # código banco isolado
+    return text.strip(' -•')
 
 
-def _clean_description(text: str, amounts: list[str]) -> str:
-    cleaned = text
-    for amt in amounts:
-        cleaned = cleaned.replace(amt, "")
-    cleaned = re.sub(r"R\$", "", cleaned)
-    cleaned = DATE_NUBANK_RE.sub("", cleaned)
-    cleaned = DATE_SLASH_RE.sub("", cleaned)
-    cleaned = re.sub(r"\s+", " ", cleaned).strip()
-    return cleaned
+# ── Cartão ─────────────────────────────────────────────────────────────────────
+
+def _parse_cartao(pdf_file, pages_text: list[str]) -> list[Transaction]:
+    year = Date.today().year
+    for page in pages_text[:3]:
+        m = re.search(r'\b(20\d{2})\b', page)
+        if m:
+            year = int(m.group(1))
+            break
+
+    transactions = []
+    tables = extract_tables(pdf_file)
+
+    for table in tables:
+        for row in table:
+            if not row or not row[0]:
+                continue
+            cell = str(row[0]).split('\n')[0].strip()
+            if 'IOF de' in cell:
+                continue
+            m = _CARD_TX_RE.match(cell)
+            if not m:
+                continue
+            txn_date = _parse_short_date(m.group(1), year)
+            if not txn_date:
+                continue
+            amount = parse_br_amount(m.group(3))
+            if amount and amount > 0:
+                transactions.append(Transaction(txn_date, m.group(2).strip(), amount))
+
+    return transactions
+
+
+def _parse_short_date(date_str: str, year: int) -> Date | None:
+    parts = date_str.strip().split()
+    if len(parts) < 2:
+        return None
+    try:
+        month = MONTHS_PT.get(parts[1].upper()[:3])
+        if not month:
+            return None
+        return Date(year, month, int(parts[0]))
+    except (ValueError, TypeError):
+        return None

@@ -16,8 +16,15 @@ def detect_and_parse(pdf_file) -> tuple[str, list[Transaction]]:
 
     pdf_file.seek(0)
 
+    # Nubank antes do Bradesco: extratos Nubank mencionam "BCO BRADESCO S.A."
+    # nas transferências, o que causaria falsa detecção se Bradesco viesse primeiro
     if "nubank" in full_text or "nu pagamentos" in full_text:
         return "Nubank", nubank.parse(pdf_file)
+
+    # "bradesco celular" é específico do app do Bradesco; "bradesco" sozinho
+    # pode aparecer como referência em extratos de outros bancos
+    if "bradesco celular" in full_text or "banco bradesco" in full_text:
+        return "Bradesco", bradesco.parse(pdf_file)
 
     if "itaú" in full_text or "itau" in full_text or "banco itaú" in full_text:
         return "Itaú", itau.parse(pdf_file)
@@ -25,7 +32,8 @@ def detect_and_parse(pdf_file) -> tuple[str, list[Transaction]]:
     if "mercado pago" in full_text or "mercadopago" in full_text:
         return "Mercado Pago", mercadopago.parse(pdf_file)
 
-    if "bradesco" in full_text or "banco bradesco" in full_text:
+    # Último recurso para Bradesco sem o cabeçalho "Celular"
+    if "bradesco" in full_text:
         return "Bradesco", bradesco.parse(pdf_file)
 
     # Generic fallback — tries all parsers and returns the most results

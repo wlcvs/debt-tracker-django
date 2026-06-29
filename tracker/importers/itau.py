@@ -21,6 +21,15 @@ DEBIT_CREDIT_RE = re.compile(r"(\d{1,3}(?:\.\d{3})*,\d{2})\s*([DC])\b")
 
 
 def parse(pdf_file) -> list[Transaction]:
+    # Fatura do Itaú (boleto/resumo) não contém transações individuais listadas.
+    # O texto fica comprimido (sem espaços) e não há tabela de lançamentos.
+    from .base import extract_text_pages
+    pages_text = extract_text_pages(pdf_file)
+    full = ''.join(pages_text)
+    if 'Totaldestafatura' in full or 'ResumodafaturaemR$' in full:
+        return []
+
+    pdf_file.seek(0)
     transactions = _parse_tables(pdf_file)
     if transactions:
         return transactions
