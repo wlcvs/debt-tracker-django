@@ -4,4 +4,3 @@ pytest-django>=4.0
 whitenoise>=6.0
 django-environ>=0.11
 pdfplumber>=0.11
-scikit-learn>=1.4

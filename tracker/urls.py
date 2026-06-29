@@ -23,7 +23,6 @@ dashboard_patterns = [
 
     path("import/", views.import_statement, name="import_statement"),
     path("import/save/", views.save_imported, name="save_imported"),
-    path("import/train/", views.train_model, name="train_model"),
     path("import/<int:stmt_id>/reopen/", views.reopen_statement, name="reopen_statement"),
     path("import/<int:stmt_id>/delete/", views.delete_statement, name="delete_statement"),
 ]

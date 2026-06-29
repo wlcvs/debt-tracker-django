@@ -13,7 +13,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from .forms import CreditCardForm, DebtForm, PaymentForm, PersonForm
-from .models import CreditCard, Debt, Payment, Person, Statement, TrainingExample
+from .models import CreditCard, Debt, Payment, Person, Statement
 
 
 class AppLoginView(LoginView):
@@ -291,11 +291,14 @@ def import_statement(request):
         return JsonResponse({"error": "O arquivo deve ser um PDF."}, status=400)
 
     try:
-        from .ml.extractor import run_algorithm, run_model
-        pdf_bytes = pdf_file.read()
+        from .importers import detect_and_parse
+        from . import llm_client
+        import io
 
-        bank, algo_results = run_algorithm(pdf_bytes)
-        model_results = run_model(pdf_bytes, bank)
+        pdf_bytes = pdf_file.read()
+        pdf_file.seek(0)
+        bank, txns = detect_and_parse(pdf_file)
+        algo_results = [{"index": i, **t.to_dict()} for i, t in enumerate(txns)]
 
         if algo_results:
             Statement.objects.create(
@@ -306,12 +309,18 @@ def import_statement(request):
                 transaction_count=len(algo_results),
             )
 
-        from .ml import is_trained
+        llm_online = llm_client.health_check()
+        llm_results = []
+        if llm_online:
+            from .importers.base import extract_text_pages
+            pages = extract_text_pages(io.BytesIO(pdf_bytes))
+            llm_results = llm_client.extract(pages, bank)
+
         return JsonResponse({
             "bank": bank,
             "algorithm": algo_results,
-            "model": model_results,
-            "model_trained": is_trained(),
+            "llm": llm_results,
+            "llm_available": llm_online,
         })
     except Exception as e:
         return JsonResponse({"error": f"Erro ao processar o PDF: {e}"}, status=400)
@@ -368,55 +377,29 @@ def save_imported(request):
 def reopen_statement(request, stmt_id):
     stmt = get_object_or_404(Statement, pk=stmt_id, user=request.user)
     try:
-        from .ml.extractor import run_algorithm, run_model
-        from .ml import is_trained
+        from .importers import detect_and_parse
+        from .importers.base import extract_text_pages
+        from . import llm_client
+        import io
+
         pdf_bytes = bytes(stmt.pdf_data)
-        bank, algo_results = run_algorithm(pdf_bytes)
-        model_results = run_model(pdf_bytes, bank)
+        bank, txns = detect_and_parse(io.BytesIO(pdf_bytes))
+        algo_results = [{"index": i, **t.to_dict()} for i, t in enumerate(txns)]
+
+        llm_online = llm_client.health_check()
+        llm_results = []
+        if llm_online:
+            pages = extract_text_pages(io.BytesIO(pdf_bytes))
+            llm_results = llm_client.extract(pages, bank)
+
         return JsonResponse({
             "bank": bank,
             "algorithm": algo_results,
-            "model": model_results,
-            "model_trained": is_trained(),
+            "llm": llm_results,
+            "llm_available": llm_online,
         })
     except Exception as e:
         return JsonResponse({"error": f"Erro ao reabrir extrato: {e}"}, status=400)
-
-
-@login_required
-@require_POST
-def train_model(request):
-    """Recebe exemplos rotulados pelo usuário e retreina o modelo."""
-    try:
-        data = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({"error": "Dados inválidos."}, status=400)
-
-    examples = data.get("examples", [])
-    bank = data.get("bank", "")
-
-    saved = 0
-    for ex in examples:
-        line = ex.get("line_raw", "").strip()
-        if not line:
-            continue
-        TrainingExample.objects.create(
-            line=line,
-            bank=bank,
-            is_transaction=bool(ex.get("is_transaction", False)),
-            date=ex.get("date") or None,
-            amount=Decimal(str(ex["amount"])) if ex.get("amount") else None,
-            description=(ex.get("description") or "")[:500],
-            source=ex.get("source", "user"),
-        )
-        saved += 1
-
-    # Retrain with all accumulated examples
-    all_examples = list(TrainingExample.objects.values("line", "bank", "is_transaction"))
-    from .ml import train
-    trained_on = train(all_examples)
-
-    return JsonResponse({"saved": saved, "trained_on": trained_on})
 
 
 @login_required

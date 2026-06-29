@@ -5,12 +5,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 env = environ.Env(
     DEBUG=(bool, False),
+    LLM_BASE_URL=(str, ""),
 )
 environ.Env.read_env(BASE_DIR / ".env")
 
 SECRET_KEY = env("SECRET_KEY")
 DEBUG = env("DEBUG")
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1", "192.168.18.178"])
+LLM_BASE_URL = env("LLM_BASE_URL")  # e.g. http://localhost:8001 or an Ngrok URL
 
 INSTALLED_APPS = [
     "django.contrib.admin",

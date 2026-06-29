@@ -276,13 +276,13 @@
                   : 'text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400'">
                 Algoritmo <span class="tabular-nums" x-text="algoTxns.length"></span>
               </button>
-              <button type="button" @click="activeTab = 'model'"
+              <button type="button" @click="activeTab = 'llm'"
                 class="px-3 py-1.5 text-[10px] tracking-widest uppercase transition-colors border-l border-zinc-200 dark:border-zinc-800"
-                :class="activeTab === 'model'
+                :class="activeTab === 'llm'
                   ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white'
                   : 'text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400'">
-                IA <span class="tabular-nums" x-text="modelTxns.length"></span>
-                <span x-show="!modelTrained" x-cloak class="normal-case tracking-normal opacity-50">(sem treino)</span>
+                LLM <span class="tabular-nums" x-text="llmTxns.length"></span>
+                <span x-show="!llmAvailable" x-cloak class="normal-case tracking-normal opacity-50">(offline)</span>
               </button>
             </div>
 
@@ -314,7 +314,7 @@
                   <th class="text-left px-4 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600 whitespace-nowrap">Data</th>
                   <th class="text-left px-4 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600">Descrição</th>
                   <th class="text-right px-4 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600 whitespace-nowrap">Valor</th>
-                  <th x-show="activeTab === 'model'" class="text-right px-4 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600 whitespace-nowrap">Conf.</th>
+                  <th x-show="false" class="hidden"></th>
                   <th class="text-left px-4 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600">Devedor</th>
                   <th class="text-left px-4 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600">Tipo</th>
                 </tr>
@@ -329,9 +329,7 @@
                     </td>
                     <td class="px-4 py-2 text-right tabular-nums text-zinc-700 dark:text-zinc-300 whitespace-nowrap"
                         x-text="'R$ ' + formatAmount(t.amount)"></td>
-                    <td x-show="activeTab === 'model'"
-                        class="px-4 py-2 text-right tabular-nums text-zinc-400 dark:text-zinc-600 whitespace-nowrap"
-                        x-text="t.confidence != null ? Math.round(t.confidence * 100) + '%' : '—'"></td>
+                    <td x-show="false" class="hidden"></td>
                     <td class="px-4 py-2">
                       <select x-model="t.person_id"
                         class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-[10px] tracking-wider text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 transition-colors w-full"
@@ -354,8 +352,8 @@
                 </template>
                 <tr x-show="filteredTransactions.length === 0" x-cloak>
                   <td colspan="6" class="px-4 py-8 text-center text-xs text-zinc-400 dark:text-zinc-600">
-                    <span x-show="activeTab === 'model' && !modelTrained">Modelo ainda não treinado — use o Algoritmo para começar.</span>
-                    <span x-show="activeTab !== 'model' || modelTrained">Nenhuma transação encontrada.</span>
+                    <span x-show="activeTab === 'llm' && !llmAvailable">Servidor LLM offline — configure LLM_BASE_URL no .env.</span>
+                    <span x-show="activeTab !== 'llm' || llmAvailable">Nenhuma transação encontrada.</span>
                   </td>
                 </tr>
               </tbody>
@@ -407,8 +405,8 @@
       step: 'upload',   // 'upload' | 'processing' | 'review' | 'saving'
       bank: '',
       algoTxns: [],
-      modelTxns: [],
-      modelTrained: false,
+      llmTxns: [],
+      llmAvailable: false,
       activeTab: 'algorithm',
       search: '',
       error: '',
@@ -416,7 +414,7 @@
       people,
 
       get currentTxns() {
-        return this.activeTab === 'algorithm' ? this.algoTxns : this.modelTxns;
+        return this.activeTab === 'algorithm' ? this.algoTxns : this.llmTxns;
       },
 
       get filteredTransactions() {
@@ -430,9 +428,7 @@
       },
 
       get readyCount() {
-        const a = this.algoTxns.filter(t => t.type !== 'ignore' && t.person_id).length;
-        const m = this.modelTxns.filter(t => t.type !== 'ignore' && t.person_id).length;
-        return a + m;
+        return this.currentTxns.filter(t => t.type !== 'ignore' && t.person_id).length;
       },
 
       formatAmount(s) {
@@ -447,8 +443,8 @@
         this.step = 'upload';
         this.bank = '';
         this.algoTxns = [];
-        this.modelTxns = [];
-        this.modelTrained = false;
+        this.llmTxns = [];
+        this.llmAvailable = false;
         this.activeTab = 'algorithm';
         this.search = '';
         this.error = '';
@@ -456,9 +452,9 @@
 
       _loadData(data) {
         this.bank = data.bank;
-        this.modelTrained = data.model_trained ?? false;
+        this.llmAvailable = data.llm_available ?? false;
         this.algoTxns = (data.algorithm || []).map((t, i) => ({ ...t, index: i, person_id: '', type: 'ignore' }));
-        this.modelTxns = (data.model || []).map((t, i) => ({ ...t, index: i, person_id: '', type: 'ignore' }));
+        this.llmTxns = (data.llm || []).map((t, i) => ({ ...t, index: i, person_id: '', type: 'ignore' }));
         this.activeTab = 'algorithm';
         this.step = 'review';
       },
@@ -483,7 +479,7 @@
           const res = await fetch('{% url "import_statement" %}', { method: 'POST', body: fd });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || 'Erro ao processar o PDF.');
-          if (!data.algorithm.length && !data.model.length)
+          if (!data.algorithm.length && !data.llm.length)
             throw new Error('Nenhuma transação encontrada neste PDF.');
           this._loadData(data);
         } catch(e) {
@@ -501,7 +497,7 @@
           const res = await fetch(url);
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || 'Erro ao reabrir extrato.');
-          if (!data.algorithm.length && !data.model.length)
+          if (!data.algorithm.length && !data.llm.length)
             throw new Error('Nenhuma transação encontrada neste extrato.');
           this._loadData(data);
         } catch(e) {
@@ -512,39 +508,13 @@
 
       async save() {
         this.step = 'saving';
-
-        // Itens selecionados nos dois tabs
-        const algoItems = this.algoTxns.filter(t => t.type !== 'ignore' && t.person_id);
-        const modelItems = this.modelTxns.filter(t => t.type !== 'ignore' && t.person_id);
-        const items = [...algoItems, ...modelItems];
-
-        // Dados de treino: todas as linhas do tab IA com line_raw
-        const examples = this.modelTxns
-          .filter(t => t.line_raw)
-          .map(t => ({
-            line_raw: t.line_raw,
-            is_transaction: t.type !== 'ignore' && !!t.person_id,
-            date: t.date,
-            amount: t.amount,
-            description: t.description,
-            source: 'user',
-          }));
-
+        const items = this.currentTxns.filter(t => t.type !== 'ignore' && t.person_id);
         try {
-          const headers = { 'Content-Type': 'application/json', 'X-CSRFToken': this.csrfToken };
-
           await fetch('{% url "save_imported" %}', {
-            method: 'POST', headers,
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': this.csrfToken },
             body: JSON.stringify({ items }),
           });
-
-          if (examples.length > 0) {
-            fetch('{% url "train_model" %}', {
-              method: 'POST', headers,
-              body: JSON.stringify({ examples, bank: this.bank }),
-            });
-          }
-
           window.location.reload();
         } catch(e) {
           this.step = 'review';
