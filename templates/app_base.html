@@ -12,7 +12,7 @@
     <a href="{% url 'dashboard' %}" class="text-sm tracking-widest uppercase text-zinc-900 dark:text-white hover:opacity-60 transition-opacity">Debt Tracker</a>
   {% endif %}
   <div class="flex items-center gap-4 sm:gap-6">
-    <button id="theme-toggle"
+    <button x-data @click="$store.theme.toggle()" x-text="$store.theme.dark ? 'Tema claro' : 'Tema escuro'"
       class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
     </button>
     {% if user.is_authenticated %}
@@ -39,76 +39,37 @@
 </main>
 
 {# ── Delete confirmation modal ── #}
-<div id="modal-overlay"
-  class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
-  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="closeModal()"></div>
-  <div class="relative bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 max-w-sm w-full">
-    <p id="modal-title" class="text-xs tracking-[0.2em] uppercase text-zinc-900 dark:text-white mb-2"></p>
-    <p id="modal-desc" class="text-xs text-zinc-500 dark:text-zinc-400 mb-6 leading-relaxed"></p>
+<div x-data
+     x-show="$store.modal.show"
+     x-cloak
+     @keydown.escape.window="$store.modal.close()"
+     class="fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="$store.modal.close()"></div>
+  <div x-trap.inert.noscroll="$store.modal.show"
+       class="relative bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 max-w-sm w-full">
+    <p x-text="$store.modal.title" class="text-xs tracking-[0.2em] uppercase text-zinc-900 dark:text-white mb-2"></p>
+    <p x-text="$store.modal.desc" class="text-xs text-zinc-500 dark:text-zinc-400 mb-6 leading-relaxed"></p>
     {# Normal: Excluir + Cancelar #}
-    <div id="modal-normal-btns" class="flex gap-3">
-      <form id="modal-form" method="post">
+    <div x-show="!$store.modal.blocked" class="flex gap-3">
+      <form method="post" :action="$store.modal.action">
         {% csrf_token %}
         <button type="submit"
           class="border border-red-300 dark:border-red-800 px-5 py-2 text-xs tracking-widest uppercase text-red-500 hover:bg-red-500 hover:text-white transition-colors cursor-pointer">
           Excluir
         </button>
       </form>
-      <button onclick="closeModal()"
+      <button @click="$store.modal.close()"
         class="border border-zinc-300 dark:border-zinc-700 px-5 py-2 text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
         Cancelar
       </button>
     </div>
     {# Blocked: só Fechar #}
-    <div id="modal-blocked-btns" class="hidden flex justify-end">
-      <button onclick="closeModal()"
+    <div x-show="$store.modal.blocked" class="flex justify-end">
+      <button @click="$store.modal.close()"
         class="border border-zinc-300 dark:border-zinc-700 px-5 py-2 text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
         Fechar
       </button>
     </div>
   </div>
 </div>
-
-<script>
-  // Delete modal
-  function _modalBtns() {
-    return [...document.querySelectorAll('#modal-overlay button')].filter(b => !b.closest('.hidden'));
-  }
-
-  function _tabTrap(e) {
-    if (e.key !== 'Tab') return;
-    const btns = _modalBtns();
-    if (!btns.length) return;
-    const first = btns[0], last = btns[btns.length - 1];
-    if (e.shiftKey) {
-      if (document.activeElement === first) { e.preventDefault(); last.focus(); }
-    } else {
-      if (document.activeElement === last) { e.preventDefault(); first.focus(); }
-    }
-  }
-
-  function openModal(title, desc, action, blocked) {
-    document.getElementById('modal-title').textContent = title;
-    document.getElementById('modal-desc').textContent = desc;
-    const blocked_ = !!blocked;
-    document.getElementById('modal-form').action = blocked_ ? '' : action;
-    document.getElementById('modal-normal-btns').classList.toggle('hidden', blocked_);
-    document.getElementById('modal-blocked-btns').classList.toggle('hidden', !blocked_);
-    document.getElementById('modal-overlay').classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
-    document.querySelector('header').setAttribute('inert', '');
-    document.querySelector('main').setAttribute('inert', '');
-    document.addEventListener('keydown', _tabTrap);
-    const btns = _modalBtns();
-    if (btns[0]) btns[0].focus();
-  }
-  function closeModal() {
-    document.getElementById('modal-overlay').classList.add('hidden');
-    document.body.style.overflow = '';
-    document.querySelector('header').removeAttribute('inert');
-    document.querySelector('main').removeAttribute('inert');
-    document.removeEventListener('keydown', _tabTrap);
-  }
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
-</script>
 {% endblock %}

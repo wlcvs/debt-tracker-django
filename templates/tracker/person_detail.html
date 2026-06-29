@@ -8,44 +8,45 @@
 <div class="border-b border-zinc-300 dark:border-zinc-700 pb-4 sm:pb-6 flex flex-col gap-3 mb-6 sm:mb-8">
 
   {# Name display / edit toggle #}
-  <div id="name-display" class="flex items-start justify-between gap-4">
-    <h2 onclick="toggleNameEdit()"
-      class="text-lg tracking-widest uppercase text-zinc-900 dark:text-white cursor-pointer hover:opacity-60 transition-opacity"
-      title="Clique para editar">
-      {{ person.name }}
-    </h2>
+  <div x-data="{ editing: false }" class="flex items-start justify-between gap-4">
+    <div class="flex-1 min-w-0">
+      <h2 x-show="!editing"
+        @click="editing = true; $nextTick(() => $refs.nameInput.focus())"
+        class="text-lg tracking-widest uppercase text-zinc-900 dark:text-white cursor-pointer hover:opacity-60 transition-opacity"
+        title="Clique para editar">
+        {{ person.name }}
+      </h2>
+      <form x-show="editing" x-cloak x-ref="nameForm"
+            method="post" action="{% url 'edit_person' person.pk %}"
+            class="flex items-center gap-2 flex-wrap"
+            @keydown.escape.window="editing = false; $refs.nameForm.reset()">
+        {% csrf_token %}
+        <input x-ref="nameInput" type="text" name="name" value="{{ person.name }}" required placeholder="NOME"
+          class="bg-transparent border border-zinc-400 dark:border-zinc-600 px-2 py-1 text-sm tracking-widest uppercase text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-700 dark:focus:border-white transition-colors" />
+        <button type="submit"
+          class="text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+          Salvar
+        </button>
+        <button type="button" @click="editing = false; $refs.nameForm.reset()"
+          class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors cursor-pointer">
+          Cancelar
+        </button>
+      </form>
+    </div>
     <p class="text-xl tracking-tight text-zinc-900 dark:text-white shrink-0">
       R$ {{ balance|floatformat:2 }}
     </p>
   </div>
 
-  <div id="name-edit" class="hidden flex items-center gap-2 flex-wrap">
-    <form method="post" action="{% url 'edit_person' person.pk %}" class="flex items-center gap-2 flex-wrap">
-      {% csrf_token %}
-      <input type="text" name="name" value="{{ person.name }}" required autofocus placeholder="NOME"
-        class="bg-transparent border border-zinc-400 dark:border-zinc-600 px-2 py-1 text-sm tracking-widest uppercase text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-700 dark:focus:border-white transition-colors" />
-      <button type="submit"
-        class="text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
-        Salvar
-      </button>
-      <button type="button" data-edit-cancel onclick="toggleNameEdit()"
-        class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors cursor-pointer">
-        Cancelar
-      </button>
-    </form>
-  </div>
-
   {# Actions #}
   <div class="flex items-center gap-4 sm:gap-6 flex-wrap">
-    <button onclick="copyPublicLink('{{ request.scheme }}://{{ request.get_host }}/public/{{ person.pk }}/')"
+    <button x-data="{ copied: false }"
+      @click="navigator.clipboard.writeText('{{ request.scheme }}://{{ request.get_host }}/public/{{ person.pk }}/').then(() => { copied = true; setTimeout(() => copied = false, 2000) })"
+      x-text="copied ? 'Link copiado!' : 'Copiar link público'"
       class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
-      Copiar link público
     </button>
     <button
-      data-modal-title="Excluir devedor"
-      data-modal-desc="{{ person.name }} e todas as dívidas e pagamentos serão removidos permanentemente."
-      data-modal-action="{% url 'delete_person' person.pk %}"
-      onclick="openModal(this.dataset.modalTitle, this.dataset.modalDesc, this.dataset.modalAction)"
+      @click="$store.modal.open('Excluir devedor', '{{ person.name }} e todas as dívidas e pagamentos serão removidos permanentemente.', '{% url 'delete_person' person.pk %}')"
       class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
       Excluir devedor
     </button>
@@ -62,47 +63,48 @@
     {% if debts %}
       <ul class="flex flex-col">
         {% for debt in debts %}
-          {# Display view #}
-          <li id="view-debt-{{ debt.pk }}" class="py-2 border-b border-zinc-300 dark:border-zinc-700">
-            <div class="flex justify-between items-start text-xs gap-2">
-              <div class="min-w-0">
-                <div class="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
-                  <span class="truncate">{{ debt.description }}</span>
-                  {% if debt.credit_card %}
-                    <span class="shrink-0 text-[10px] tracking-widest uppercase border border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 px-1.5 py-0.5">
-                      {{ debt.credit_card.label }}
-                    </span>
-                  {% elif debt.method %}
-                    <span class="shrink-0 text-[10px] tracking-widest uppercase border border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 px-1.5 py-0.5">
-                      {{ debt.get_method_display }}
-                    </span>
-                  {% endif %}
+          <li x-data="{ editing: false }" class="border-b border-zinc-300 dark:border-zinc-700">
+
+            {# Display view #}
+            <div x-show="!editing" class="py-2">
+              <div class="flex justify-between items-start text-xs gap-2">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
+                    <span class="truncate">{{ debt.description }}</span>
+                    {% if debt.credit_card %}
+                      <span class="shrink-0 text-[10px] tracking-widest uppercase border border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 px-1.5 py-0.5">
+                        {{ debt.credit_card.label }}
+                      </span>
+                    {% elif debt.method %}
+                      <span class="shrink-0 text-[10px] tracking-widest uppercase border border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 px-1.5 py-0.5">
+                        {{ debt.get_method_display }}
+                      </span>
+                    {% endif %}
+                  </div>
+                  <div class="mt-0.5 text-[10px] tracking-wider text-zinc-400 dark:text-zinc-600">{{ debt.date }}</div>
                 </div>
-                <div class="mt-0.5 text-[10px] tracking-wider text-zinc-400 dark:text-zinc-600">{{ debt.date }}</div>
-              </div>
-              <div class="flex items-center gap-4 shrink-0">
-                <span class="tracking-tight text-zinc-700 dark:text-zinc-300">R$ {{ debt.amount|floatformat:2 }}</span>
-                <div class="flex gap-3">
-                  <button onclick="editDebt({{ debt.pk }})"
-                    class="tracking-widest uppercase text-zinc-400 dark:text-zinc-700 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors cursor-pointer">
-                    Editar
-                  </button>
-                  <button
-                    data-modal-title="Excluir dívida"
-                    data-modal-desc="&quot;{{ debt.description }}&quot; será removida permanentemente."
-                    data-modal-action="{% url 'delete_debt' person.pk debt.pk %}"
-                    onclick="openModal(this.dataset.modalTitle, this.dataset.modalDesc, this.dataset.modalAction)"
-                    class="tracking-widest uppercase text-zinc-400 dark:text-zinc-700 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors cursor-pointer">
-                    Excluir
-                  </button>
+                <div class="flex items-center gap-4 shrink-0">
+                  <span class="tracking-tight text-zinc-700 dark:text-zinc-300">R$ {{ debt.amount|floatformat:2 }}</span>
+                  <div class="flex gap-3">
+                    <button @click="editing = true; $nextTick(() => $refs.debtForm.querySelector('input').focus())"
+                      class="tracking-widest uppercase text-zinc-400 dark:text-zinc-700 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors cursor-pointer">
+                      Editar
+                    </button>
+                    <button
+                      @click="$store.modal.open('Excluir dívida', '&quot;{{ debt.description|escapejs }}&quot; será removida permanentemente.', '{% url 'delete_debt' person.pk debt.pk %}')"
+                      class="tracking-widest uppercase text-zinc-400 dark:text-zinc-700 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors cursor-pointer">
+                      Excluir
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </li>
 
-          {# Edit form (hidden) #}
-          <li id="edit-debt-{{ debt.pk }}" class="hidden flex flex-col gap-1 py-2 border-b border-zinc-300 dark:border-zinc-700">
-            <form method="post" action="{% url 'edit_debt' person.pk debt.pk %}" class="flex flex-col gap-1">
+            {# Edit form #}
+            <form x-show="editing" x-cloak x-ref="debtForm"
+                  method="post" action="{% url 'edit_debt' person.pk debt.pk %}"
+                  class="flex flex-col gap-1 py-2"
+                  @keydown.escape.window="editing = false; $refs.debtForm.reset()">
               {% csrf_token %}
               <input type="text" name="description" value="{{ debt.description }}" required
                 class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs tracking-wider text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
@@ -130,7 +132,7 @@
                   class="text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
                   Salvar
                 </button>
-                <button type="button" data-edit-cancel onclick="cancelDebt({{ debt.pk }})"
+                <button type="button" @click="editing = false; $refs.debtForm.reset()"
                   class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors cursor-pointer">
                   Cancelar
                 </button>
@@ -142,11 +144,17 @@
     {% endif %}
 
     {# Add debt form #}
-    <details class="group">
-      <summary class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer list-none">
+    <div x-data="{ open: false }"
+         x-init="$watch('open', v => { if (!v) $refs.addDebtForm.reset() })"
+         @click.outside="open = false"
+         @keydown.escape.window="open = false">
+      <button type="button" @click="open = !open"
+        class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
         + Adicionar dívida
-      </summary>
-      <form method="post" action="{% url 'add_debt' person.pk %}" class="mt-3 flex flex-col gap-2">
+      </button>
+      <form x-show="open" x-cloak x-ref="addDebtForm"
+            method="post" action="{% url 'add_debt' person.pk %}"
+            class="mt-3 flex flex-col gap-2">
         {% csrf_token %}
         <input type="text" name="description" placeholder="DESCRIÇÃO" required
           class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest placeholder:text-zinc-400 dark:placeholder:text-zinc-600 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
@@ -174,7 +182,7 @@
           Salvar
         </button>
       </form>
-    </details>
+    </div>
   </section>
 
   {# ── Payments ── #}
@@ -184,40 +192,41 @@
     {% if payments %}
       <ul class="flex flex-col">
         {% for payment in payments %}
-          {# Display view #}
-          <li id="view-payment-{{ payment.pk }}" class="py-2 border-b border-zinc-300 dark:border-zinc-700">
-            <div class="flex justify-between items-center text-xs text-zinc-600 dark:text-zinc-300">
-              <div>
-                <span class="text-zinc-500 dark:text-zinc-400">{{ payment.date }}</span>
-                <div class="mt-0.5">
-                  <span class="text-[10px] tracking-wider text-zinc-400 dark:text-zinc-600">
-                    {{ payment.get_method_display }}
-                  </span>
+          <li x-data="{ editing: false }" class="border-b border-zinc-300 dark:border-zinc-700">
+
+            {# Display view #}
+            <div x-show="!editing" class="py-2">
+              <div class="flex justify-between items-center text-xs text-zinc-600 dark:text-zinc-300">
+                <div>
+                  <span class="text-zinc-500 dark:text-zinc-400">{{ payment.date }}</span>
+                  <div class="mt-0.5">
+                    <span class="text-[10px] tracking-wider text-zinc-400 dark:text-zinc-600">
+                      {{ payment.get_method_display }}
+                    </span>
+                  </div>
                 </div>
-              </div>
-              <div class="flex items-center gap-4 shrink-0">
-                <span class="tracking-tight">R$ {{ payment.amount|floatformat:2 }}</span>
-                <div class="flex gap-3">
-                  <button onclick="editPayment({{ payment.pk }})"
-                    class="tracking-widest uppercase text-zinc-400 dark:text-zinc-700 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors cursor-pointer">
-                    Editar
-                  </button>
-                  <button
-                    data-modal-title="Excluir pagamento"
-                    data-modal-desc="Pagamento de R$ {{ payment.amount|floatformat:2 }} em {{ payment.date }} será removido permanentemente."
-                    data-modal-action="{% url 'delete_payment' person.pk payment.pk %}"
-                    onclick="openModal(this.dataset.modalTitle, this.dataset.modalDesc, this.dataset.modalAction)"
-                    class="tracking-widest uppercase text-zinc-400 dark:text-zinc-700 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors cursor-pointer">
-                    Excluir
-                  </button>
+                <div class="flex items-center gap-4 shrink-0">
+                  <span class="tracking-tight">R$ {{ payment.amount|floatformat:2 }}</span>
+                  <div class="flex gap-3">
+                    <button @click="editing = true; $nextTick(() => $refs.paymentForm.querySelector('input').focus())"
+                      class="tracking-widest uppercase text-zinc-400 dark:text-zinc-700 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors cursor-pointer">
+                      Editar
+                    </button>
+                    <button
+                      @click="$store.modal.open('Excluir pagamento', 'Pagamento de R$ {{ payment.amount|floatformat:2 }} em {{ payment.date }} será removido permanentemente.', '{% url 'delete_payment' person.pk payment.pk %}')"
+                      class="tracking-widest uppercase text-zinc-400 dark:text-zinc-700 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors cursor-pointer">
+                      Excluir
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </li>
 
-          {# Edit form (hidden) #}
-          <li id="edit-payment-{{ payment.pk }}" class="hidden flex flex-col gap-1 py-2 border-b border-zinc-300 dark:border-zinc-700">
-            <form method="post" action="{% url 'edit_payment' person.pk payment.pk %}" class="flex flex-col gap-1">
+            {# Edit form #}
+            <form x-show="editing" x-cloak x-ref="paymentForm"
+                  method="post" action="{% url 'edit_payment' person.pk payment.pk %}"
+                  class="flex flex-col gap-1 py-2"
+                  @keydown.escape.window="editing = false; $refs.paymentForm.reset()">
               {% csrf_token %}
               <div class="flex gap-2 items-start">
                 <div>
@@ -239,7 +248,7 @@
                   class="text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
                   Salvar
                 </button>
-                <button type="button" data-edit-cancel onclick="cancelPayment({{ payment.pk }})"
+                <button type="button" @click="editing = false; $refs.paymentForm.reset()"
                   class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors cursor-pointer">
                   Cancelar
                 </button>
@@ -251,11 +260,17 @@
     {% endif %}
 
     {# Add payment form #}
-    <details class="group">
-      <summary class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer list-none">
+    <div x-data="{ open: false }"
+         x-init="$watch('open', v => { if (!v) $refs.addPaymentForm.reset() })"
+         @click.outside="open = false"
+         @keydown.escape.window="open = false">
+      <button type="button" @click="open = !open"
+        class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
         + Adicionar pagamento
-      </summary>
-      <form method="post" action="{% url 'add_payment' person.pk %}" class="mt-3 flex flex-col gap-2">
+      </button>
+      <form x-show="open" x-cloak x-ref="addPaymentForm"
+            method="post" action="{% url 'add_payment' person.pk %}"
+            class="mt-3 flex flex-col gap-2">
         {% csrf_token %}
         <div class="flex gap-2 items-start">
           <div>
@@ -269,7 +284,7 @@
         </div>
         <select name="method" required
           class="bg-[#f0f0f4] dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors">
-          <option value="">— Método —</option>
+          <option value="" disabled selected hidden>— Método —</option>
           <option value="PIX">Pix</option>
           <option value="CASH">Dinheiro</option>
         </select>
@@ -278,42 +293,8 @@
           Salvar
         </button>
       </form>
-    </details>
+    </div>
   </section>
 
 </div>
-
-<script>
-  function toggleNameEdit() {
-    document.getElementById('name-display').classList.toggle('hidden');
-    document.getElementById('name-edit').classList.toggle('hidden');
-  }
-
-  function editDebt(id) {
-    document.getElementById('view-debt-' + id).classList.add('hidden');
-    document.getElementById('edit-debt-' + id).classList.remove('hidden');
-  }
-  function cancelDebt(id) {
-    document.getElementById('view-debt-' + id).classList.remove('hidden');
-    document.getElementById('edit-debt-' + id).classList.add('hidden');
-  }
-
-  function editPayment(id) {
-    document.getElementById('view-payment-' + id).classList.add('hidden');
-    document.getElementById('edit-payment-' + id).classList.remove('hidden');
-  }
-  function cancelPayment(id) {
-    document.getElementById('view-payment-' + id).classList.remove('hidden');
-    document.getElementById('edit-payment-' + id).classList.add('hidden');
-  }
-
-  function copyPublicLink(url) {
-    navigator.clipboard.writeText(url).then(() => {
-      const btn = event.currentTarget;
-      const original = btn.textContent;
-      btn.textContent = 'Link copiado!';
-      setTimeout(() => btn.textContent = original, 2000);
-    });
-  }
-</script>
 {% endblock %}

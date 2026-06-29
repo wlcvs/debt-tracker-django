@@ -12,6 +12,8 @@
       }
     } catch(e) {}
   </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.x.x/dist/cdn.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <style type="text/tailwindcss">
     @custom-variant dark (&:where(.dark, .dark *));
@@ -21,8 +23,8 @@
     }
 
     body { font-family: var(--font-mono); }
-
     input, select, textarea, button { font-family: inherit; }
+    [x-cloak] { display: none !important; }
 
     ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -34,23 +36,38 @@
 </head>
 <body class="{% block body_class %}{% endblock %}">
   {% block theme_toggle %}
-  <button id="theme-toggle"
+  <button x-data @click="$store.theme.toggle()" x-text="$store.theme.dark ? 'Tema claro' : 'Tema escuro'"
     class="fixed top-4 right-5 text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer z-10">
   </button>
   {% endblock %}
   {% block body %}{% endblock %}
   <script>
-    // Theme toggle
-    const themeBtn = document.getElementById('theme-toggle');
-    if (themeBtn) {
-      themeBtn.textContent = document.documentElement.classList.contains('dark') ? 'Tema claro' : 'Tema escuro';
-      themeBtn.addEventListener('click', () => {
-        const isDark = document.documentElement.classList.contains('dark');
-        document.documentElement.classList.toggle('dark', !isDark);
-        localStorage.setItem('theme', isDark ? 'light' : 'dark');
-        themeBtn.textContent = !isDark ? 'Tema claro' : 'Tema escuro';
+    document.addEventListener('alpine:init', () => {
+      Alpine.store('theme', {
+        dark: document.documentElement.classList.contains('dark'),
+        toggle() {
+          this.dark = !this.dark;
+          document.documentElement.classList.toggle('dark', this.dark);
+          localStorage.setItem('theme', this.dark ? 'dark' : 'light');
+        }
       });
-    }
+
+      Alpine.store('modal', {
+        show: false,
+        title: '',
+        desc: '',
+        action: '',
+        blocked: false,
+        open(title, desc, action, blocked = false) {
+          this.title = title;
+          this.desc = desc;
+          this.action = blocked ? '' : action;
+          this.blocked = blocked;
+          this.show = true;
+        },
+        close() { this.show = false; }
+      });
+    });
 
     // Custom form validation — replaces browser native bubbles
     document.addEventListener('invalid', (e) => {
@@ -82,47 +99,10 @@
       }
     });
 
-    // Click outside: first clears errors, second closes open <details>
     document.addEventListener('click', (e) => {
       if (e.target.matches('input, select, textarea')) return;
-      const errors = document.querySelectorAll('.field-error');
-      if (errors.length > 0) {
-        errors.forEach(err => err.remove());
-        document.querySelectorAll('input, select, textarea').forEach(el => { if (el._errEl) el._errEl = null; });
-        return;
-      }
-      document.querySelectorAll('details[open]').forEach(d => {
-        if (!d.contains(e.target)) d.removeAttribute('open');
-      });
-    });
-
-    function resetForm(form) {
-      if (!form) return;
-      form.querySelectorAll('input, textarea').forEach(el => {
-        el.value = '';
-        if (el._errEl) { el._errEl.remove(); el._errEl = null; }
-      });
-      form.querySelectorAll('select').forEach(sel => { sel.selectedIndex = 0; });
-      form.querySelectorAll('.field-error').forEach(el => el.remove());
-    }
-
-    // Reset forms when <details> opens so the form is always clean
-    document.addEventListener('toggle', (e) => {
-      if (e.target.tagName !== 'DETAILS' || !e.target.open) return;
-      e.target.querySelectorAll('form').forEach(resetForm);
-    }, true);
-
-    document.addEventListener('keydown', (e) => {
-      if (e.key !== 'Escape') return;
-      document.querySelectorAll('[data-edit-cancel]').forEach(btn => {
-        if (!btn.closest('.hidden')) {
-          resetForm(btn.closest('form'));
-          btn.click();
-        }
-      });
-      document.querySelectorAll('details[open]').forEach(el => {
-        el.removeAttribute('open');
-      });
+      document.querySelectorAll('.field-error').forEach(err => err.remove());
+      document.querySelectorAll('input, select, textarea').forEach(el => { if (el._errEl) el._errEl = null; });
     });
   </script>
 </body>
