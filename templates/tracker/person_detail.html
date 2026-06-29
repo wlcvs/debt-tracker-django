@@ -63,7 +63,7 @@
     </button>
     <button x-data
       @click="$store.modal.open('Excluir devedor', '{{ person.name|escapejs }} e todas as dívidas e pagamentos serão removidos permanentemente.', '{% url 'delete_person' person.pk %}')"
-      class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+      class="text-xs tracking-widest uppercase text-red-500 dark:text-red-400 hover:text-red-400 dark:hover:text-red-300 transition-colors cursor-pointer">
       Excluir devedor
     </button>
   </div>
@@ -104,18 +104,18 @@
               class="border-b border-zinc-300 dark:border-zinc-700 last:border-0">
 
             <button @click="open = true"
-              class="w-full flex justify-between items-center py-3 hover:opacity-60 transition-opacity text-left gap-4">
-              <span class="text-xs tracking-widest text-zinc-700 dark:text-zinc-300 truncate">{% if debt.title %}{{ debt.title }}{% else %}<span class="text-zinc-400 dark:text-zinc-600 italic">sem título</span>{% endif %}</span>
-              <span class="text-xs text-zinc-700 dark:text-zinc-300 shrink-0">R$ {{ debt.amount|floatformat:2 }}</span>
+              class="w-full flex justify-between items-center py-3 hover:opacity-60 transition-opacity text-left gap-4{% if debt.paid %} opacity-50{% endif %}">
+              <span class="text-xs tracking-widest text-zinc-700 dark:text-zinc-300 truncate{% if debt.paid %} line-through{% endif %}">{% if debt.title %}{{ debt.title }}{% else %}<span class="text-zinc-400 dark:text-zinc-600 italic">sem título</span>{% endif %}</span>
+              <span class="text-xs text-zinc-700 dark:text-zinc-300 shrink-0{% if debt.paid %} line-through{% endif %}">R$ {{ debt.amount|floatformat:2 }}</span>
             </button>
 
             <template x-teleport="body">
               <div x-show="open" style="display:none"
-                   class="fixed inset-0 z-40 flex items-end sm:items-center justify-center sm:p-4"
+                   class="fixed inset-0 z-40 flex items-center justify-center p-4"
                    @keydown.escape.window="open = false">
                 <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="open = false"></div>
                 <div x-trap.inert.noscroll="open"
-                     class="relative bg-[#f0f0f4] dark:bg-zinc-900 border-t sm:border border-zinc-300 dark:border-zinc-700 w-full sm:max-w-sm max-h-[90vh] overflow-y-auto">
+                     class="relative bg-[#f0f0f4] dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 w-full max-w-sm max-h-[90vh] overflow-y-auto">
 
                   <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-zinc-200 dark:border-zinc-800">
                     <p class="text-[10px] tracking-[0.3em] uppercase text-zinc-400 dark:text-zinc-500">Dívida</p>
@@ -136,13 +136,20 @@
                         <span class="text-[10px] tracking-widest uppercase border border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 px-1.5 py-0.5">{{ debt.get_method_display }}</span>
                       {% endif %}
                     </div>
-                    <div class="flex gap-3">
+                    <div class="flex flex-wrap gap-3 items-center">
                       <button @click="editing = true"
-                        class="border border-zinc-400 dark:border-zinc-600 px-5 py-2 text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+                        class="border border-zinc-600 dark:border-zinc-400 px-5 py-2 text-xs tracking-widest uppercase text-zinc-700 dark:text-zinc-300 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
                         Editar
                       </button>
+                      <form method="post" action="{% url 'toggle_debt_paid' person.pk debt.pk %}">
+                        {% csrf_token %}
+                        <button type="submit"
+                          class="border px-5 py-2 text-xs tracking-widest uppercase transition-colors cursor-pointer {% if debt.paid %}border-zinc-600 dark:border-zinc-400 text-zinc-700 dark:text-zinc-300 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white{% else %}border-zinc-500 dark:border-zinc-500 text-zinc-600 dark:text-zinc-400 hover:border-zinc-700 hover:text-zinc-800 dark:hover:border-zinc-300 dark:hover:text-zinc-200{% endif %}">
+                          {% if debt.paid %}Desfazer{% else %}Marcar como paga{% endif %}
+                        </button>
+                      </form>
                       <button @click="open = false; $store.modal.open('Excluir dívida', '&quot;{{ debt.title|escapejs }}&quot; será removida permanentemente.', '{% url 'delete_debt' person.pk debt.pk %}')"
-                        class="border border-zinc-300 dark:border-zinc-700 px-5 py-2 text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:border-red-400 hover:text-red-400 transition-colors cursor-pointer">
+                        class="border border-red-500 dark:border-red-400 px-5 py-2 text-xs tracking-widest uppercase text-red-500 dark:text-red-400 hover:border-red-400 hover:text-red-400 dark:hover:border-red-300 dark:hover:text-red-300 transition-colors cursor-pointer">
                         Excluir
                       </button>
                     </div>
@@ -204,7 +211,7 @@
                     <div class="flex justify-between items-center pt-1">
                       <div class="flex gap-3">
                         <button type="submit"
-                          class="border border-zinc-400 dark:border-zinc-600 px-5 py-2 text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+                          class="border border-zinc-600 dark:border-zinc-400 px-5 py-2 text-xs tracking-widest uppercase text-zinc-700 dark:text-zinc-300 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
                           Salvar
                         </button>
                         <button type="button" @click="editing = false"
@@ -214,7 +221,7 @@
                       </div>
                       <button type="button"
                         @click="open = false; $store.modal.open('Excluir dívida', '&quot;{{ debt.title|escapejs }}&quot; será removida permanentemente.', '{% url 'delete_debt' person.pk debt.pk %}')"
-                        class="text-xs tracking-widest uppercase text-zinc-300 dark:text-zinc-700 hover:text-red-400 transition-colors cursor-pointer">
+                        class="text-xs tracking-widest uppercase text-red-500 dark:text-red-400 hover:text-red-400 dark:hover:text-red-300 transition-colors cursor-pointer">
                         Excluir
                       </button>
                     </div>
@@ -336,11 +343,11 @@
 
             <template x-teleport="body">
               <div x-show="open" style="display:none"
-                   class="fixed inset-0 z-40 flex items-end sm:items-center justify-center sm:p-4"
+                   class="fixed inset-0 z-40 flex items-center justify-center p-4"
                    @keydown.escape.window="open = false">
                 <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="open = false"></div>
                 <div x-trap.inert.noscroll="open"
-                     class="relative bg-[#f0f0f4] dark:bg-zinc-900 border-t sm:border border-zinc-300 dark:border-zinc-700 w-full sm:max-w-sm max-h-[90vh] overflow-y-auto">
+                     class="relative bg-[#f0f0f4] dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 w-full max-w-sm max-h-[90vh] overflow-y-auto">
 
                   <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-zinc-200 dark:border-zinc-800">
                     <p class="text-[10px] tracking-[0.3em] uppercase text-zinc-400 dark:text-zinc-500">Pagamento</p>
@@ -360,11 +367,11 @@
                     </div>
                     <div class="flex gap-3">
                       <button @click="editing = true"
-                        class="border border-zinc-400 dark:border-zinc-600 px-5 py-2 text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+                        class="border border-zinc-600 dark:border-zinc-400 px-5 py-2 text-xs tracking-widest uppercase text-zinc-700 dark:text-zinc-300 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
                         Editar
                       </button>
                       <button @click="open = false; $store.modal.open('Excluir pagamento', 'Pagamento de R$ {{ payment.amount|floatformat:2 }} será removido permanentemente.', '{% url 'delete_payment' person.pk payment.pk %}')"
-                        class="border border-zinc-300 dark:border-zinc-700 px-5 py-2 text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:border-red-400 hover:text-red-400 transition-colors cursor-pointer">
+                        class="border border-red-500 dark:border-red-400 px-5 py-2 text-xs tracking-widest uppercase text-red-500 dark:text-red-400 hover:border-red-400 hover:text-red-400 dark:hover:border-red-300 dark:hover:text-red-300 transition-colors cursor-pointer">
                         Excluir
                       </button>
                     </div>
@@ -418,7 +425,7 @@
                     <div class="flex justify-between items-center pt-1">
                       <div class="flex gap-3">
                         <button type="submit"
-                          class="border border-zinc-400 dark:border-zinc-600 px-5 py-2 text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+                          class="border border-zinc-600 dark:border-zinc-400 px-5 py-2 text-xs tracking-widest uppercase text-zinc-700 dark:text-zinc-300 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
                           Salvar
                         </button>
                         <button type="button" @click="editing = false"
@@ -428,7 +435,7 @@
                       </div>
                       <button type="button"
                         @click="open = false; $store.modal.open('Excluir pagamento', 'Pagamento de R$ {{ payment.amount|floatformat:2 }} será removido permanentemente.', '{% url 'delete_payment' person.pk payment.pk %}')"
-                        class="text-xs tracking-widest uppercase text-zinc-300 dark:text-zinc-700 hover:text-red-400 transition-colors cursor-pointer">
+                        class="text-xs tracking-widest uppercase text-red-500 dark:text-red-400 hover:text-red-400 dark:hover:text-red-300 transition-colors cursor-pointer">
                         Excluir
                       </button>
                     </div>

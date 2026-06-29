@@ -11,6 +11,7 @@ dashboard_patterns = [
     path("person/<uuid:pk>/debt/add/", views.add_debt, name="add_debt"),
     path("person/<uuid:pk>/debt/<int:debt_id>/edit/", views.edit_debt, name="edit_debt"),
     path("person/<uuid:pk>/debt/<int:debt_id>/delete/", views.delete_debt, name="delete_debt"),
+    path("person/<uuid:pk>/debt/<int:debt_id>/toggle-paid/", views.toggle_debt_paid, name="toggle_debt_paid"),
 
     path("person/<uuid:pk>/payment/add/", views.add_payment, name="add_payment"),
     path("person/<uuid:pk>/payment/<int:payment_id>/edit/", views.edit_payment, name="edit_payment"),

@@ -41,6 +41,7 @@ class Debt(models.Model):
     description = models.CharField(max_length=500, blank=True, default="")
     date = models.DateField()
     method = models.CharField(max_length=4, choices=Method.choices, null=True, blank=True)
+    paid = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.person} — R$ {self.amount}"

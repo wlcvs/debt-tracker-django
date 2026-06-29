@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView
-from django.db.models import Sum
+from django.db.models import Q, Sum
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -41,7 +41,7 @@ def dashboard(request):
     people = (
         Person.objects.filter(user=request.user)
         .annotate(
-            total_debt=Coalesce(Sum("debts__amount"), Decimal("0")),
+            total_debt=Coalesce(Sum("debts__amount", filter=Q(debts__paid=False)), Decimal("0")),
             total_paid=Coalesce(Sum("payments__amount"), Decimal("0")),
         )
         .order_by("name")
@@ -86,7 +86,7 @@ def person_detail(request, pk):
     person = get_object_or_404(Person, pk=pk, user=request.user)
     debts = person.debts.select_related("credit_card").order_by("-date")
     payments = person.payments.order_by("-date")
-    total_debt = sum(d.amount for d in debts)
+    total_debt = sum(d.amount for d in debts if not d.paid)
     total_paid = sum(p.amount for p in payments)
 
     return render(request, "tracker/person_detail.html", {
@@ -165,6 +165,16 @@ def edit_debt(request, pk, debt_id):
         "title": "Editar dívida",
         "back_url": reverse("person_detail", kwargs={"pk": pk}),
     })
+
+
+@login_required
+@require_POST
+def toggle_debt_paid(request, pk, debt_id):
+    person = get_object_or_404(Person, pk=pk, user=request.user)
+    debt = get_object_or_404(Debt, pk=debt_id, person=person)
+    debt.paid = not debt.paid
+    debt.save()
+    return redirect("person_detail", pk=pk)
 
 
 @login_required
@@ -285,7 +295,7 @@ def public_view(request, pk):
     person = get_object_or_404(Person, pk=pk)
     debts = person.debts.select_related("credit_card").order_by("-date")
     payments = person.payments.order_by("-date")
-    total_debt = sum(d.amount for d in debts)
+    total_debt = sum(d.amount for d in debts if not d.paid)
     total_paid = sum(p.amount for p in payments)
 
     return render(request, "tracker/public_view.html", {
