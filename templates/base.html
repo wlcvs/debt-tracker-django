@@ -75,6 +75,11 @@
     document.addEventListener('focusout', (e) => {
       const el = e.target;
       if (el._errEl) { el._errEl.remove(); el._errEl = null; }
+      const form = el.closest('form');
+      if (form && !form.contains(e.relatedTarget)) {
+        form.querySelectorAll('.field-error').forEach(err => err.remove());
+        form.querySelectorAll('input, select, textarea').forEach(i => { if (i._errEl) i._errEl = null; });
+      }
     });
 
     function resetForm(form) {
