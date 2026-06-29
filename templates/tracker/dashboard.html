@@ -6,10 +6,16 @@
 
   {# ── Total a receber ── #}
   <section x-data="{ visible: true }">
-    <div class="flex items-center gap-8 mb-3">
-      <p class="text-[10px] tracking-[0.3em] text-zinc-400 dark:text-zinc-500 uppercase">Total a receber</p>
-      <button @click="visible = !visible" x-text="visible ? 'Esconder' : 'Mostrar'"
-        class="text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors cursor-pointer">
+    <div class="flex items-center justify-between gap-4 mb-3">
+      <div class="flex items-center gap-8">
+        <p class="text-[10px] tracking-[0.3em] text-zinc-400 dark:text-zinc-500 uppercase">Total a receber</p>
+        <button @click="visible = !visible" x-text="visible ? 'Esconder' : 'Mostrar'"
+          class="text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors cursor-pointer">
+        </button>
+      </div>
+      <button @click="$dispatch('open-import')"
+        class="border border-zinc-400 dark:border-zinc-600 px-4 py-2 text-[10px] tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer whitespace-nowrap">
+        Importar extrato
       </button>
     </div>
     <p x-show="visible" class="text-5xl tracking-tight text-zinc-900 dark:text-white">
@@ -141,14 +147,6 @@
     </section>
 
   </div>
-
-  {# ── Import button ── #}
-  <section>
-    <button type="button" @click="$dispatch('open-import')"
-      class="border border-zinc-400 dark:border-zinc-600 px-5 py-2.5 text-xs tracking-widest uppercase text-zinc-600 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
-      Importar extrato
-    </button>
-  </section>
 
 </div>
 
