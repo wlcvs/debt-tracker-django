@@ -392,7 +392,7 @@
                   <button type="button" @click="save()" :disabled="readyCount === 0 || step === 'saving'"
                     class="border px-4 py-1.5 text-xs tracking-widest uppercase transition-colors cursor-pointer"
                     :class="readyCount > 0 ? 'border-zinc-600 dark:border-zinc-400 text-zinc-700 dark:text-zinc-300 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white' : 'border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-600 cursor-not-allowed'">
-                    <span x-show="step !== 'saving'">Importar <span x-text="readyCount"></span></span>
+                    <span x-show="step !== 'saving'">Importar</span>
                     <span x-show="step === 'saving'" x-cloak>Salvando…</span>
                   </button>
                 </div>
