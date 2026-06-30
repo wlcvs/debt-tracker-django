@@ -293,7 +293,7 @@
               Todos pgto
             </button>
             <button type="button" @click="setAllType('ignore')"
-              class="text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 transition-colors whitespace-nowrap cursor-pointer">
+              class="text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors whitespace-nowrap cursor-pointer">
               Ignorar
             </button>
             <span class="flex-1 hidden sm:block"></span>
@@ -338,16 +338,16 @@
                     <template x-for="t in filteredTransactions" :key="t.index">
                       <tr class="border-b border-zinc-100 dark:border-zinc-800/60 transition-opacity"
                           :class="t.type === 'ignore' ? 'opacity-30' : ''">
-                        <td class="pl-3 pr-1 py-1.5 tabular-nums text-zinc-500 dark:text-zinc-400 whitespace-nowrap text-[11px]" x-text="t.date"></td>
-                        <td class="px-1 py-1.5 text-zinc-700 dark:text-zinc-300 overflow-hidden">
+                        <td class="pl-3 pr-1 py-1.5 tabular-nums text-zinc-500 dark:text-zinc-300 whitespace-nowrap text-[11px]" x-text="t.date"></td>
+                        <td class="px-1 py-1.5 text-zinc-800 dark:text-zinc-100 overflow-hidden">
                           <span class="block truncate text-[11px]" :title="t.description" x-text="t.description"></span>
-                          <span x-show="t.manual" x-cloak class="text-[9px] tracking-widest uppercase text-zinc-400 dark:text-zinc-600">manual</span>
+                          <span x-show="t.manual" x-cloak class="text-[9px] tracking-widest uppercase text-zinc-400 dark:text-zinc-500">manual</span>
                         </td>
-                        <td class="px-1 py-1.5 text-right tabular-nums text-zinc-700 dark:text-zinc-300 whitespace-nowrap text-[11px]"
+                        <td class="px-1 py-1.5 text-right tabular-nums text-zinc-800 dark:text-zinc-100 whitespace-nowrap text-[11px]"
                             x-text="'R$' + formatAmount(t.amount)"></td>
                         <td class="px-1 py-1.5 overflow-hidden">
                           <select x-model="t.person_id"
-                            class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-1 py-0.5 text-[10px] tracking-wider text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 transition-colors"
+                            class="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 px-1 py-0.5 text-[10px] tracking-wider text-zinc-800 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 transition-colors"
                             :disabled="t.type === 'ignore'">
                             <option value="">—</option>
                             <template x-for="p in people" :key="p.id">
@@ -357,7 +357,7 @@
                         </td>
                         <td class="pl-1 pr-3 py-1.5 overflow-hidden">
                           <select x-model="t.type"
-                            class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-1 py-0.5 text-[10px] tracking-wider text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 transition-colors">
+                            class="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 px-1 py-0.5 text-[10px] tracking-wider text-zinc-800 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 transition-colors">
                             <option value="ignore">Ignorar</option>
                             <option value="debt">Dívida</option>
                             <option value="payment">Pgto</option>
@@ -377,12 +377,12 @@
 
               {# Table footer #}
               <div class="flex items-center justify-between gap-3 px-4 py-3 border-t border-zinc-200 dark:border-zinc-800 shrink-0">
-                <p class="text-[10px] tracking-wider text-zinc-400 dark:text-zinc-600">
+                <p class="text-[10px] tracking-wider text-zinc-500 dark:text-zinc-400">
                   <span x-text="readyCount"></span> prontos
                 </p>
                 <div class="flex gap-3 items-center">
                   <button type="button" @click="open = false; reset()"
-                    class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 transition-colors cursor-pointer">
+                    class="text-xs tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer">
                     Cancelar
                   </button>
                   <button type="button" @click="save()" :disabled="readyCount === 0 || step === 'saving'"
@@ -413,8 +413,8 @@
                 <span class="flex-1"></span>
                 <button x-show="isCached" x-cloak type="button" @click="runFreshLLM()"
                   :disabled="step === 'processing'"
-                  class="mr-3 text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors cursor-pointer whitespace-nowrap">
-                  <span x-show="step !== 'processing'">↺ Nova análise LLM</span>
+                  class="mr-3 text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors cursor-pointer whitespace-nowrap">
+                  <span x-show="step !== 'processing'">Nova análise</span>
                   <span x-show="step === 'processing'" x-cloak>Analisando…</span>
                 </button>
               </div>
@@ -431,8 +431,13 @@
               {# Text viewer #}
               <div x-show="viewerTab === 'text'" x-cloak class="flex-1 flex flex-col min-h-0">
                 <div class="flex-1 overflow-auto" @mouseup="handleTextSelection()" x-ref="textPanel">
-                  <pre class="p-4 text-xs font-mono text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap break-words leading-relaxed select-text"
-                       x-text="extractedText || 'Texto extraído não disponível.'"></pre>
+                  <pre x-show="extractedText" x-cloak
+                       class="p-4 text-xs font-mono text-zinc-700 dark:text-zinc-200 whitespace-pre-wrap break-words leading-relaxed select-text"
+                       x-text="extractedText"></pre>
+                  <div x-show="!extractedText" class="flex flex-col items-center justify-center h-full gap-3 p-8 text-center">
+                    <p class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-500">Texto extraído não disponível</p>
+                    <p class="text-[11px] text-zinc-400 dark:text-zinc-600 max-w-xs">Reinicie o servidor LLM e clique em <strong class="text-zinc-500 dark:text-zinc-400">Nova análise</strong> para gerar o texto.</p>
+                  </div>
                 </div>
                 <div x-show="selectedText" x-cloak
                      class="shrink-0 flex items-center gap-3 px-4 py-2 border-t border-zinc-200 dark:border-zinc-800 bg-[#f0f0f4] dark:bg-zinc-900">
