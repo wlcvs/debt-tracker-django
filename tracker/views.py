@@ -364,14 +364,16 @@ def save_imported(request):
             amount = Decimal(item["amount"])
             txn_date = item["date"]
             description = (item.get("description") or "")[:500]
+            title = (item.get("title") or description)[:255] or "Importado"
+            notes = (item.get("notes") or "")[:500]
         except (KeyError, Exception):
             continue
 
         if item_type == "debt":
             Debt.objects.create(
                 person=person,
-                title=description[:255] or "Importado",
-                description="",
+                title=title,
+                description=notes,
                 amount=amount,
                 date=txn_date,
             )
@@ -379,7 +381,7 @@ def save_imported(request):
             Payment.objects.create(
                 person=person,
                 amount=amount,
-                description=description,
+                description=notes or description,
                 date=txn_date,
                 method=Payment.Method.PIX,
             )

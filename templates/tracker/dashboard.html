@@ -441,9 +441,14 @@
                       class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 transition-colors" />
                   </div>
                 </div>
+                <div class="mb-4">
+                  <label class="block text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-600 mb-1.5">Título</label>
+                  <input type="text" x-model="manualTitle" required maxlength="255"
+                    class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 transition-colors" />
+                </div>
                 <div class="mb-5">
-                  <label class="block text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-600 mb-1.5">Descrição</label>
-                  <input type="text" x-model="manualDescription" required maxlength="255"
+                  <label class="block text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-600 mb-1.5">Descrição <span class="normal-case tracking-normal opacity-60">(opcional)</span></label>
+                  <input type="text" x-model="manualNotes" maxlength="500"
                     class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 transition-colors" />
                 </div>
                 <div class="flex gap-3 justify-end">
@@ -489,13 +494,12 @@
       algoTxns: [],
       llmTxns: [],
       llmAvailable: false,
-      activeTab: 'algorithm',
-      viewerTab: 'pdf',
       search: '',
       error: '',
       showManualAdd: false,
       manualDate: '',
-      manualDescription: '',
+      manualTitle: '',
+      manualNotes: '',
       manualAmount: '',
       pdfBlobUrl: '',
       pdfServerUrl: '',
@@ -584,7 +588,8 @@
         this.error = '';
         this.showManualAdd = false;
         this.manualDate = '';
-        this.manualDescription = '';
+        this.manualTitle = '';
+        this.manualNotes = '';
         this.manualAmount = '';
         this.sortKey = 'date';
         this.sortDir = 'asc';
@@ -691,18 +696,21 @@
 
       openManualAdd() {
         this.manualDate = '';
-        this.manualDescription = '';
+        this.manualTitle = '';
+        this.manualNotes = '';
         this.manualAmount = '';
         this.showManualAdd = true;
       },
 
       async confirmManualAdd() {
-        if (!this.manualDate || !this.manualDescription || !this.manualAmount) return;
+        if (!this.manualDate || !this.manualTitle || !this.manualAmount) return;
 
         const newTxn = {
           index: 'manual_' + Date.now(),
           date: this.manualDate,
-          description: this.manualDescription,
+          description: this.manualTitle,
+          title: this.manualTitle,
+          notes: this.manualNotes,
           amount: parseFloat(this.manualAmount).toFixed(2),
           person_id: '',
           type: 'debt',
@@ -719,7 +727,7 @@
               bank: this.bank,
               corrections: [{
                 date: this.manualDate,
-                description: this.manualDescription,
+                description: this.manualTitle,
                 amount: this.manualAmount,
                 context: '',
               }]
