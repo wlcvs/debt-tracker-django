@@ -390,17 +390,15 @@ def reopen_statement(request, stmt_id):
     stmt = get_object_or_404(Statement, pk=stmt_id, user=request.user)
     fresh = request.GET.get("fresh") == "1"
     try:
-        from .importers import detect_and_parse
         from . import llm_client
-        import io
 
+        bank = stmt.bank
         pdf_bytes = bytes(stmt.pdf_data)
 
-        # Algo is fast — always re-run from PDF bytes
-        bank, txns = detect_and_parse(io.BytesIO(pdf_bytes))
-        algo_results = [{"index": i, **t.to_dict()} for i, t in enumerate(txns)]
+        # Always use cached algo results — no re-run on reopen
+        algo_results = stmt.algo_results or []
 
-        # LLM: use cache unless fresh=1 is requested
+        # LLM: use cache unless fresh=1 or no cache yet
         if fresh or not stmt.llm_results:
             llm_online = llm_client.health_check()
             corrections = _get_corrections(request.user, bank) if llm_online else []
@@ -415,11 +413,6 @@ def reopen_statement(request, stmt_id):
             llm_results = stmt.llm_results
             extracted_text = stmt.extracted_text
             llm_online = True
-
-        new_count = max(len(algo_results), len(llm_results))
-        if new_count != stmt.transaction_count:
-            stmt.transaction_count = new_count
-            stmt.save(update_fields=["transaction_count"])
 
         return JsonResponse({
             "bank": bank,
