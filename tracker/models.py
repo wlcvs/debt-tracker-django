@@ -55,6 +55,10 @@ class Statement(models.Model):
     pdf_data = models.BinaryField()
     transaction_count = models.IntegerField(default=0)
     uploaded_at = models.DateTimeField(auto_now_add=True)
+    # Cached extraction results — populated on first upload, reused on reopen
+    algo_results = models.JSONField(default=list, blank=True)
+    llm_results = models.JSONField(default=list, blank=True)
+    extracted_text = models.TextField(blank=True, default="")
 
     class Meta:
         ordering = ["-uploaded_at"]

@@ -10,6 +10,7 @@ from django.db.models.functions import Coalesce
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.views.decorators.clickjacking import xframe_options_exempt
 from django.views.decorators.http import require_POST
 
 from django.http import HttpResponse
@@ -321,6 +322,9 @@ def import_statement(request):
             filename=pdf_file.name,
             pdf_data=pdf_bytes,
             transaction_count=max(len(algo_results), len(llm_results)),
+            algo_results=algo_results,
+            llm_results=llm_results,
+            extracted_text=extracted_text,
         )
 
         return JsonResponse({
@@ -384,20 +388,33 @@ def save_imported(request):
 @login_required
 def reopen_statement(request, stmt_id):
     stmt = get_object_or_404(Statement, pk=stmt_id, user=request.user)
+    fresh = request.GET.get("fresh") == "1"
     try:
         from .importers import detect_and_parse
         from . import llm_client
         import io
 
         pdf_bytes = bytes(stmt.pdf_data)
+
+        # Algo is fast — always re-run from PDF bytes
         bank, txns = detect_and_parse(io.BytesIO(pdf_bytes))
         algo_results = [{"index": i, **t.to_dict()} for i, t in enumerate(txns)]
 
-        llm_online = llm_client.health_check()
-        corrections = _get_corrections(request.user, bank) if llm_online else []
-        llm_data = llm_client.extract(pdf_bytes, bank, corrections) if llm_online else {}
-        llm_results = llm_data.get("transactions", [])
-        extracted_text = llm_data.get("extracted_text", "")
+        # LLM: use cache unless fresh=1 is requested
+        if fresh or not stmt.llm_results:
+            llm_online = llm_client.health_check()
+            corrections = _get_corrections(request.user, bank) if llm_online else []
+            llm_data = llm_client.extract(pdf_bytes, bank, corrections) if llm_online else {}
+            llm_results = llm_data.get("transactions", [])
+            extracted_text = llm_data.get("extracted_text", "")
+            if llm_results or extracted_text:
+                stmt.llm_results = llm_results
+                stmt.extracted_text = extracted_text
+                stmt.save(update_fields=["llm_results", "extracted_text"])
+        else:
+            llm_results = stmt.llm_results
+            extracted_text = stmt.extracted_text
+            llm_online = True
 
         new_count = max(len(algo_results), len(llm_results))
         if new_count != stmt.transaction_count:
@@ -410,12 +427,14 @@ def reopen_statement(request, stmt_id):
             "llm": llm_results,
             "extracted_text": extracted_text,
             "llm_available": llm_online,
+            "cached": not fresh and bool(stmt.llm_results),
         })
     except Exception as e:
         return JsonResponse({"error": f"Erro ao reabrir extrato: {e}"}, status=400)
 
 
 @login_required
+@xframe_options_exempt
 def serve_statement_pdf(request, stmt_id):
     stmt = get_object_or_404(Statement, pk=stmt_id, user=request.user)
     return HttpResponse(

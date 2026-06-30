@@ -309,11 +309,18 @@
             {# LEFT: Table #}
             <div class="w-[45%] lg:w-[42%] flex flex-col min-h-0 border-r border-zinc-200 dark:border-zinc-800">
 
-              {# Sticky column headers #}
-              <div class="shrink-0 border-b border-zinc-200 dark:border-zinc-800 bg-[#f0f0f4] dark:bg-zinc-900">
-                <table class="w-full text-xs border-collapse">
-                  <thead>
-                    <tr>
+              {# Single table with sticky thead #}
+              <div class="flex-1 overflow-auto">
+                <table class="w-full text-xs border-collapse" style="table-layout:fixed">
+                  <colgroup>
+                    <col style="width:90px">
+                    <col>
+                    <col style="width:82px">
+                    <col style="width:90px">
+                    <col style="width:72px">
+                  </colgroup>
+                  <thead class="sticky top-0 bg-[#f0f0f4] dark:bg-zinc-900 z-10">
+                    <tr class="border-b border-zinc-200 dark:border-zinc-800">
                       <th class="text-left pl-3 pr-1 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600 whitespace-nowrap cursor-pointer hover:text-zinc-700 dark:hover:text-zinc-300 select-none"
                           @click="setSort('date')">
                         Data<span class="ml-0.5" x-text="sortKey === 'date' ? (sortDir === 'asc' ? '↑' : '↓') : '↕'"></span>
@@ -323,30 +330,24 @@
                           @click="setSort('amount')">
                         <span x-text="sortKey === 'amount' ? (sortDir === 'asc' ? '↑' : '↓') : '↕'"></span>Valor
                       </th>
-                      <th class="text-left px-1 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600">Dev</th>
+                      <th class="text-left px-1 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600">Devedor</th>
                       <th class="text-left pl-1 pr-3 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600">Tipo</th>
                     </tr>
                   </thead>
-                </table>
-              </div>
-
-              {# Scrollable rows #}
-              <div class="flex-1 overflow-auto">
-                <table class="w-full text-xs border-collapse">
                   <tbody>
                     <template x-for="t in filteredTransactions" :key="t.index">
                       <tr class="border-b border-zinc-100 dark:border-zinc-800/60 transition-opacity"
                           :class="t.type === 'ignore' ? 'opacity-30' : ''">
                         <td class="pl-3 pr-1 py-1.5 tabular-nums text-zinc-500 dark:text-zinc-400 whitespace-nowrap text-[11px]" x-text="t.date"></td>
-                        <td class="px-1 py-1.5 text-zinc-700 dark:text-zinc-300">
-                          <span class="block truncate text-[11px] max-w-[120px]" :title="t.description" x-text="t.description"></span>
+                        <td class="px-1 py-1.5 text-zinc-700 dark:text-zinc-300 overflow-hidden">
+                          <span class="block truncate text-[11px]" :title="t.description" x-text="t.description"></span>
                           <span x-show="t.manual" x-cloak class="text-[9px] tracking-widest uppercase text-zinc-400 dark:text-zinc-600">manual</span>
                         </td>
                         <td class="px-1 py-1.5 text-right tabular-nums text-zinc-700 dark:text-zinc-300 whitespace-nowrap text-[11px]"
                             x-text="'R$' + formatAmount(t.amount)"></td>
-                        <td class="px-1 py-1.5">
+                        <td class="px-1 py-1.5 overflow-hidden">
                           <select x-model="t.person_id"
-                            class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-1 py-0.5 text-[10px] tracking-wider text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 transition-colors w-full min-w-[70px]"
+                            class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-1 py-0.5 text-[10px] tracking-wider text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 transition-colors"
                             :disabled="t.type === 'ignore'">
                             <option value="">—</option>
                             <template x-for="p in people" :key="p.id">
@@ -354,9 +355,9 @@
                             </template>
                           </select>
                         </td>
-                        <td class="pl-1 pr-3 py-1.5">
+                        <td class="pl-1 pr-3 py-1.5 overflow-hidden">
                           <select x-model="t.type"
-                            class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-1 py-0.5 text-[10px] tracking-wider text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 transition-colors">
+                            class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-1 py-0.5 text-[10px] tracking-wider text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 transition-colors">
                             <option value="ignore">Ignorar</option>
                             <option value="debt">Dívida</option>
                             <option value="payment">Pgto</option>
@@ -398,7 +399,7 @@
             <div class="flex-1 flex flex-col min-h-0">
 
               {# Viewer tabs #}
-              <div class="flex border-b border-zinc-200 dark:border-zinc-800 shrink-0">
+              <div class="flex items-center border-b border-zinc-200 dark:border-zinc-800 shrink-0">
                 <button type="button" @click="viewerTab = 'pdf'"
                   class="px-4 py-2.5 text-[10px] tracking-widest uppercase transition-colors border-b-2"
                   :class="viewerTab === 'pdf' ? 'border-zinc-900 dark:border-white text-zinc-900 dark:text-white' : 'border-transparent text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400'">
@@ -409,13 +410,20 @@
                   :class="viewerTab === 'text' ? 'border-zinc-900 dark:border-white text-zinc-900 dark:text-white' : 'border-transparent text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400'">
                   Texto extraído
                 </button>
+                <span class="flex-1"></span>
+                <button x-show="isCached" x-cloak type="button" @click="runFreshLLM()"
+                  :disabled="step === 'processing'"
+                  class="mr-3 text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors cursor-pointer whitespace-nowrap">
+                  <span x-show="step !== 'processing'">↺ Nova análise LLM</span>
+                  <span x-show="step === 'processing'" x-cloak>Analisando…</span>
+                </button>
               </div>
 
               {# PDF viewer #}
-              <div x-show="viewerTab === 'pdf'" class="flex-1 min-h-0 bg-zinc-200 dark:bg-zinc-800">
-                <iframe x-show="pdfUrl" x-cloak :src="pdfUrl"
-                        class="w-full h-full border-0"></iframe>
-                <div x-show="!pdfUrl" class="flex items-center justify-center h-full">
+              <div x-show="viewerTab === 'pdf'" class="flex-1 min-h-0 flex flex-col bg-zinc-200 dark:bg-zinc-800">
+                <embed x-show="pdfUrl" x-cloak :src="pdfUrl"
+                       type="application/pdf" class="flex-1 w-full border-0 min-h-0">
+                <div x-show="!pdfUrl" class="flex-1 flex items-center justify-center">
                   <p class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600">PDF não disponível</p>
                 </div>
               </div>
@@ -520,6 +528,8 @@
       manualAmount: '',
       pdfBlobUrl: '',
       pdfServerUrl: '',
+      reopenUrl: '',
+      isCached: false,
       sortKey: 'date',
       sortDir: 'asc',
       csrfToken,
@@ -575,6 +585,8 @@
         if (this.pdfBlobUrl) { URL.revokeObjectURL(this.pdfBlobUrl); }
         this.pdfBlobUrl = '';
         this.pdfServerUrl = '';
+        this.reopenUrl = '';
+        this.isCached = false;
         this.step = 'upload';
         this.bank = '';
         this.algoTxns = [];
@@ -600,6 +612,7 @@
         this.algoTxns = (data.algorithm || []).map((t, i) => ({ ...t, index: i, person_id: '', type: 'ignore' }));
         this.llmTxns = (data.llm || []).map((t, i) => ({ ...t, index: i, person_id: '', type: 'ignore' }));
         this.extractedText = data.extracted_text || '';
+        this.isCached = data.cached ?? false;
         this.activeTab = 'algorithm';
         this.viewerTab = this.pdfUrl ? 'pdf' : (this.extractedText ? 'text' : 'pdf');
         this.step = 'review';
@@ -641,6 +654,7 @@
         if (this.pdfBlobUrl) URL.revokeObjectURL(this.pdfBlobUrl);
         this.pdfBlobUrl = '';
         this.pdfServerUrl = pdfUrl || '';
+        this.reopenUrl = url;
         this.open = true;
         this.step = 'processing';
         this.bank = '';
@@ -655,6 +669,21 @@
         } catch(e) {
           this.error = e.message;
           this.step = 'upload';
+        }
+      },
+
+      async runFreshLLM() {
+        if (!this.reopenUrl) return;
+        this.step = 'processing';
+        try {
+          const url = this.reopenUrl + (this.reopenUrl.includes('?') ? '&' : '?') + 'fresh=1';
+          const res = await fetch(url);
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Erro ao analisar.');
+          this._loadData(data);
+        } catch(e) {
+          this.error = e.message;
+          this.step = 'review';
         }
       },
 
