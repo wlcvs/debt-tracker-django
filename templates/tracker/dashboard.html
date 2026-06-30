@@ -347,7 +347,7 @@
                           <span class="block truncate text-[11px]" :title="t.description" x-text="t.description"></span>
                           <span x-show="t.manual" x-cloak class="text-[9px] tracking-widest uppercase text-zinc-400 dark:text-zinc-500">manual</span>
                         </td>
-                        <td class="pl-1 pr-3 py-1.5 text-right tabular-nums text-zinc-800 dark:text-zinc-100 whitespace-nowrap text-[11px]"
+                        <td class="pl-1 pr-3 py-1.5 text-left tabular-nums text-zinc-800 dark:text-zinc-100 whitespace-nowrap text-[11px]"
                             x-text="'R$' + formatAmount(t.amount)"></td>
                         <td class="px-1 py-1.5 overflow-hidden">
                           <select x-model="t.person_id"
