@@ -184,7 +184,9 @@
           <div id="stmt-{{ stmt.id }}"
                x-show="!search || '{{ stmt.filename|lower }}'.includes(search.toLowerCase())"
                class="flex items-center gap-4 px-6 py-3.5">
-            <span class="flex-1 text-xs text-zinc-600 dark:text-zinc-300 truncate min-w-0">{{ stmt.filename }}</span>
+            <button
+              @click="window.dispatchEvent(new CustomEvent('reopen-statement', { detail: { url: '{% url "reopen_statement" stmt.id %}', pdfUrl: '{% url "serve_statement_pdf" stmt.id %}' } })); open = false"
+              class="flex-1 text-xs text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white truncate min-w-0 text-left transition-colors cursor-pointer">{{ stmt.filename }}</button>
             <span class="text-[10px] tabular-nums text-zinc-400 dark:text-zinc-500 shrink-0">
               {{ stmt.uploaded_at|date:"d/m H:i" }}
             </span>
@@ -263,7 +265,9 @@
         {# Step: review — split pane #}
         <div x-show="step === 'review'" x-cloak class="relative flex-1 flex flex-col min-h-0">
 
-          {# Toolbar #}
+          {# Toolbar + filter panel wrapped for @click.outside #}
+          <div @click.outside="showFilters = false">
+
           <div class="flex items-center gap-2 px-4 py-2.5 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
             <button type="button" @click="showFilters = !showFilters"
               class="text-[10px] tracking-widest uppercase border px-3 py-1.5 transition-colors whitespace-nowrap cursor-pointer"
@@ -307,6 +311,8 @@
             </button>
           </div>
 
+          </div>{# /toolbar+filter wrapper #}
+
           {# Split body #}
           <div class="flex-1 flex min-h-0">
 
@@ -319,15 +325,15 @@
                   <colgroup>
                     <col style="width:90px">
                     <col>
-                    <col style="width:82px">
-                    <col style="width:90px">
-                    <col style="width:72px">
+                    <col style="width:88px">
+                    <col style="width:100px">
+                    <col style="width:100px">
                   </colgroup>
                   <thead class="sticky top-0 bg-[#f0f0f4] dark:bg-zinc-900 z-10">
                     <tr class="border-b border-zinc-200 dark:border-zinc-800">
                       <th class="text-left pl-3 pr-1 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600 whitespace-nowrap">Data</th>
                       <th class="text-left px-1 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600">Descrição</th>
-                      <th class="text-right px-1 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600 whitespace-nowrap">Valor</th>
+                      <th class="text-left pl-1 pr-3 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600 whitespace-nowrap">Valor</th>
                       <th class="text-left px-1 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600">Devedor</th>
                       <th class="text-left pl-1 pr-3 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600">Tipo</th>
                     </tr>
@@ -341,7 +347,7 @@
                           <span class="block truncate text-[11px]" :title="t.description" x-text="t.description"></span>
                           <span x-show="t.manual" x-cloak class="text-[9px] tracking-widest uppercase text-zinc-400 dark:text-zinc-500">manual</span>
                         </td>
-                        <td class="px-1 py-1.5 text-right tabular-nums text-zinc-800 dark:text-zinc-100 whitespace-nowrap text-[11px]"
+                        <td class="pl-1 pr-3 py-1.5 text-right tabular-nums text-zinc-800 dark:text-zinc-100 whitespace-nowrap text-[11px]"
                             x-text="'R$' + formatAmount(t.amount)"></td>
                         <td class="px-1 py-1.5 overflow-hidden">
                           <select x-model="t.person_id"
