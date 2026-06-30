@@ -171,7 +171,7 @@
         {# Top toolbar: import button + search #}
         <div class="flex gap-3 px-6 py-3 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
           <button
-            @click="open = false; window.dispatchEvent(new CustomEvent('open-import'))"
+            @click="open = false; window.dispatchEvent(new CustomEvent('open-import', { detail: { fromStatements: true } }))"
             class="shrink-0 border border-zinc-400 dark:border-zinc-600 px-4 py-2 text-[10px] tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
             + Importar
           </button>
@@ -184,7 +184,6 @@
           <div id="stmt-{{ stmt.id }}"
                x-show="!search || '{{ stmt.bank|lower }} {{ stmt.filename|lower }}'.includes(search.toLowerCase())"
                class="flex items-center gap-4 px-6 py-3.5">
-            <span class="text-[10px] tracking-widest uppercase font-medium text-zinc-700 dark:text-zinc-300 w-24 shrink-0">{{ stmt.bank }}</span>
             <span class="flex-1 text-xs text-zinc-600 dark:text-zinc-300 truncate min-w-0">{{ stmt.filename }}</span>
             <span class="text-[10px] tabular-nums text-zinc-400 dark:text-zinc-500 shrink-0">
               {{ stmt.uploaded_at|date:"d/m H:i" }}
@@ -195,11 +194,7 @@
               Abrir
             </button>
             <button
-              @click="
-                if (!confirm('Excluir &quot;{{ stmt.filename|escapejs }}&quot;?')) return;
-                fetch('{% url "delete_statement" stmt.id %}', { method: 'POST', headers: { 'X-CSRFToken': '{{ csrf_token }}' } })
-                  .then(r => { if (r.ok) document.getElementById('stmt-{{ stmt.id }}').remove() })
-              "
+              onclick="Alpine.store('modal').open('Excluir extrato', '{{ stmt.filename|escapejs }} será removido permanentemente.', '{% url "delete_statement" stmt.id %}')"
               class="text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-red-500 transition-colors shrink-0 cursor-pointer">
               Excluir
             </button>
@@ -217,7 +212,7 @@
 {# ── Import modal ── #}
 {{ people_json|json_script:"import-modal-people" }}
 <div x-data="importModal('{{ csrf_token }}')"
-     @open-import.window="open = true"
+     @open-import.window="open = true; fromStatements = ($event.detail?.fromStatements ?? false)"
      @reopen-statement.window="reopenSaved($event.detail.url, $event.detail.pdfUrl)"
      @keydown.escape.window="if (open) { open = false; reset(); }">
 
@@ -536,6 +531,7 @@
       pdfServerUrl: '',
       reopenUrl: '',
       isCached: false,
+      fromStatements: false,
       sortKey: 'date',
       sortDir: 'asc',
       csrfToken,
@@ -588,11 +584,13 @@
       },
 
       reset() {
+        const backToStatements = this.fromStatements;
         if (this.pdfBlobUrl) { URL.revokeObjectURL(this.pdfBlobUrl); }
         this.pdfBlobUrl = '';
         this.pdfServerUrl = '';
         this.reopenUrl = '';
         this.isCached = false;
+        this.fromStatements = false;
         this.step = 'upload';
         this.bank = '';
         this.algoTxns = [];
@@ -610,6 +608,9 @@
         this.manualAmount = '';
         this.sortKey = 'date';
         this.sortDir = 'asc';
+        if (backToStatements) {
+          setTimeout(() => window.dispatchEvent(new CustomEvent('open-statements')), 50);
+        }
       },
 
       _loadData(data) {
