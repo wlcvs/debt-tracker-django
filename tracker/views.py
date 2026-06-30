@@ -12,8 +12,10 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
+from django.http import HttpResponse
+
 from .forms import CreditCardForm, DebtForm, PaymentForm, PersonForm
-from .models import CreditCard, Debt, Payment, Person, Statement
+from .models import CreditCard, Debt, LLMFeedback, Payment, Person, Statement
 
 
 class AppLoginView(LoginView):
@@ -281,6 +283,13 @@ def delete_credit_card(request, card_id):
 
 # ── Statement import ───────────────────────────────────────────────────────────
 
+def _get_corrections(user, bank):
+    return list(
+        LLMFeedback.objects.filter(user=user, bank=bank)
+        .order_by("-created_at")[:10]
+        .values("date", "description", "amount", "context")
+    )
+
 @login_required
 @require_POST
 def import_statement(request):
@@ -301,7 +310,10 @@ def import_statement(request):
         algo_results = [{"index": i, **t.to_dict()} for i, t in enumerate(txns)]
 
         llm_online = llm_client.health_check()
-        llm_results = llm_client.extract(pdf_bytes, bank) if llm_online else []
+        corrections = _get_corrections(request.user, bank) if llm_online else []
+        llm_data = llm_client.extract(pdf_bytes, bank, corrections) if llm_online else {}
+        llm_results = llm_data.get("transactions", [])
+        extracted_text = llm_data.get("extracted_text", "")
 
         Statement.objects.create(
             user=request.user,
@@ -315,6 +327,7 @@ def import_statement(request):
             "bank": bank,
             "algorithm": algo_results,
             "llm": llm_results,
+            "extracted_text": extracted_text,
             "llm_available": llm_online,
         })
     except Exception as e:
@@ -381,7 +394,10 @@ def reopen_statement(request, stmt_id):
         algo_results = [{"index": i, **t.to_dict()} for i, t in enumerate(txns)]
 
         llm_online = llm_client.health_check()
-        llm_results = llm_client.extract(pdf_bytes, bank) if llm_online else []
+        corrections = _get_corrections(request.user, bank) if llm_online else []
+        llm_data = llm_client.extract(pdf_bytes, bank, corrections) if llm_online else {}
+        llm_results = llm_data.get("transactions", [])
+        extracted_text = llm_data.get("extracted_text", "")
 
         new_count = max(len(algo_results), len(llm_results))
         if new_count != stmt.transaction_count:
@@ -392,10 +408,47 @@ def reopen_statement(request, stmt_id):
             "bank": bank,
             "algorithm": algo_results,
             "llm": llm_results,
+            "extracted_text": extracted_text,
             "llm_available": llm_online,
         })
     except Exception as e:
         return JsonResponse({"error": f"Erro ao reabrir extrato: {e}"}, status=400)
+
+
+@login_required
+def serve_statement_pdf(request, stmt_id):
+    stmt = get_object_or_404(Statement, pk=stmt_id, user=request.user)
+    return HttpResponse(
+        bytes(stmt.pdf_data),
+        content_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{stmt.filename}"'},
+    )
+
+
+@login_required
+@require_POST
+def save_llm_feedback(request):
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Dados inválidos."}, status=400)
+
+    bank = data.get("bank", "")
+    saved = 0
+    for item in data.get("corrections", []):
+        try:
+            LLMFeedback.objects.create(
+                user=request.user,
+                bank=bank,
+                date=item["date"],
+                description=item["description"][:255],
+                amount=Decimal(str(item["amount"])),
+                context=item.get("context", "")[:2000],
+            )
+            saved += 1
+        except (KeyError, Exception):
+            continue
+    return JsonResponse({"saved": saved})
 
 
 @login_required

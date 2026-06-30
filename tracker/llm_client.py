@@ -27,19 +27,24 @@ def health_check() -> bool:
         return False
 
 
-def extract(pdf_bytes: bytes, bank_hint: str = "") -> list[dict]:
+def extract(pdf_bytes: bytes, bank_hint: str = "", corrections: list[dict] | None = None) -> dict:
     """
     Send raw PDF bytes to the LLM server and return extracted transactions.
-    The server handles text extraction and LLM inference internally.
+    Optionally passes known missed transactions as corrections for few-shot prompting.
 
-    Returns a list of dicts with keys: date, description, amount.
+    Returns {'transactions': [...], 'extracted_text': '...'}.
     """
     url = _base_url()
     if not url:
-        return []
+        return {}
+
+    serialized_corrections = json.dumps([
+        {"date": str(c["date"]), "description": c["description"], "amount": str(c["amount"])}
+        for c in (corrections or [])
+    ])
 
     body, content_type = _encode_multipart(
-        fields={"bank": bank_hint},
+        fields={"bank": bank_hint, "corrections": serialized_corrections},
         files={"pdf": ("statement.pdf", pdf_bytes, "application/pdf")},
     )
     req = urllib.request.Request(
@@ -52,9 +57,12 @@ def extract(pdf_bytes: bytes, bank_hint: str = "") -> list[dict]:
         with urllib.request.urlopen(req, timeout=600) as resp:
             data = json.loads(resp.read())
             txns = data.get("transactions", [])
-            return [{"index": i, **t} for i, t in enumerate(txns)]
+            return {
+                "transactions": [{"index": i, **t} for i, t in enumerate(txns)],
+                "extracted_text": data.get("extracted_text", ""),
+            }
     except Exception:
-        return []
+        return {}
 
 
 def _encode_multipart(

@@ -63,6 +63,23 @@ class Statement(models.Model):
         return f"{self.bank} — {self.filename}"
 
 
+class LLMFeedback(models.Model):
+    """Manually corrected transactions the LLM missed — injected as few-shot examples on future extracts."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="llm_feedbacks")
+    bank = models.CharField(max_length=100)
+    date = models.DateField()
+    description = models.CharField(max_length=255)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    context = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.bank} {self.date} {self.description} R${self.amount}"
+
+
 class Payment(models.Model):
     class Method(models.TextChoices):
         PIX = "PIX", "Pix"

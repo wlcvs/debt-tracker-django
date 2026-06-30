@@ -23,7 +23,9 @@ dashboard_patterns = [
 
     path("import/", views.import_statement, name="import_statement"),
     path("import/save/", views.save_imported, name="save_imported"),
+    path("import/feedback/", views.save_llm_feedback, name="save_llm_feedback"),
     path("import/<int:stmt_id>/reopen/", views.reopen_statement, name="reopen_statement"),
+    path("import/<int:stmt_id>/pdf/", views.serve_statement_pdf, name="serve_statement_pdf"),
     path("import/<int:stmt_id>/delete/", views.delete_statement, name="delete_statement"),
 ]
 

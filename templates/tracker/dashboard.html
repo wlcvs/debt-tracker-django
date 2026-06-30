@@ -178,7 +178,7 @@
             </span>
             {% if stmt.transaction_count > 0 %}
             <button
-              @click="window.dispatchEvent(new CustomEvent('reopen-statement', { detail: { url: '{% url "reopen_statement" stmt.id %}' } })); open = false"
+              @click="window.dispatchEvent(new CustomEvent('reopen-statement', { detail: { url: '{% url "reopen_statement" stmt.id %}', pdfUrl: '{% url "serve_statement_pdf" stmt.id %}' } })); open = false"
               class="text-[10px] tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors shrink-0 cursor-pointer">
               Abrir
             </button>
@@ -217,16 +217,16 @@
 {{ people_json|json_script:"import-modal-people" }}
 <div x-data="importModal('{{ csrf_token }}')"
      @open-import.window="open = true"
-     @reopen-statement.window="reopenSaved($event.detail.url)"
+     @reopen-statement.window="reopenSaved($event.detail.url, $event.detail.pdfUrl)"
      @keydown.escape.window="if (open) { open = false; reset(); }">
 
   <template x-teleport="body">
     <div x-show="open" style="display:none"
-         class="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-6">
+         class="fixed inset-0 z-50 flex items-stretch p-0 lg:p-6">
       <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="open = false; reset()"></div>
 
       <div x-trap.inert.noscroll="open"
-           class="relative flex flex-col bg-[#f0f0f4] dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 w-full h-full sm:h-auto sm:max-w-4xl sm:max-h-[90vh]">
+           class="relative flex flex-col bg-[#f0f0f4] dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 w-full h-full">
 
         {# Header #}
         <div class="flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
@@ -240,7 +240,6 @@
         {# Step: upload #}
         <div x-show="step === 'upload'" class="flex-1 flex flex-col items-center justify-center p-8 gap-4">
           <p x-show="error" x-cloak x-text="error" class="text-xs text-red-500 dark:text-red-400 tracking-wider text-center"></p>
-
           <label
             class="w-full max-w-sm flex flex-col items-center gap-4 border-2 border-dashed border-zinc-300 dark:border-zinc-700 px-8 py-12 cursor-pointer hover:border-zinc-500 dark:hover:border-zinc-400 transition-colors"
             @dragover.prevent
@@ -265,123 +264,221 @@
           </div>
         </div>
 
-        {# Step: review #}
-        <div x-show="step === 'review'" x-cloak class="flex-1 flex flex-col min-h-0">
+        {# Step: review — split pane #}
+        <div x-show="step === 'review'" x-cloak class="relative flex-1 flex flex-col min-h-0">
 
-          {# Tabs + Toolbar #}
-          <div class="flex flex-wrap items-center gap-3 px-6 py-3 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
-
-            {# Tab switcher #}
+          {# Toolbar #}
+          <div class="flex flex-wrap items-center gap-2 px-4 py-2.5 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
             <div class="flex border border-zinc-200 dark:border-zinc-800">
               <button type="button" @click="activeTab = 'algorithm'"
                 class="px-3 py-1.5 text-[10px] tracking-widest uppercase transition-colors"
-                :class="activeTab === 'algorithm'
-                  ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white'
-                  : 'text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400'">
-                Algoritmo <span class="tabular-nums" x-text="algoTxns.length"></span>
+                :class="activeTab === 'algorithm' ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white' : 'text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400'">
+                Algo <span class="tabular-nums" x-text="algoTxns.length"></span>
               </button>
               <button type="button" @click="activeTab = 'llm'"
                 class="px-3 py-1.5 text-[10px] tracking-widest uppercase transition-colors border-l border-zinc-200 dark:border-zinc-800"
-                :class="activeTab === 'llm'
-                  ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white'
-                  : 'text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400'">
+                :class="activeTab === 'llm' ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white' : 'text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400'">
                 LLM <span class="tabular-nums" x-text="llmTxns.length"></span>
-                <span x-show="!llmAvailable" x-cloak class="normal-case tracking-normal opacity-50">(offline)</span>
+                <span x-show="!llmAvailable" x-cloak class="normal-case tracking-normal opacity-50 ml-0.5">(off)</span>
               </button>
             </div>
-
             <input type="search" x-model="search" placeholder="Filtrar…"
-              class="flex-1 min-w-32 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 text-xs tracking-wider placeholder:text-zinc-400 dark:placeholder:text-zinc-600 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 transition-colors" />
-
-            <span class="text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-600 whitespace-nowrap">
-              <span x-text="readyCount"></span> prontos
-            </span>
+              class="w-28 bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1.5 text-xs tracking-wider placeholder:text-zinc-400 dark:placeholder:text-zinc-600 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 transition-colors" />
             <button type="button" @click="setAllType('debt')"
-              class="text-[10px] tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors whitespace-nowrap">
+              class="text-[10px] tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors whitespace-nowrap cursor-pointer">
               Todos dívida
             </button>
             <button type="button" @click="setAllType('payment')"
-              class="text-[10px] tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors whitespace-nowrap">
-              Todos pagamento
+              class="text-[10px] tracking-widest uppercase text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors whitespace-nowrap cursor-pointer">
+              Todos pgto
             </button>
             <button type="button" @click="setAllType('ignore')"
-              class="text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 transition-colors whitespace-nowrap">
-              Ignorar todos
+              class="text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 transition-colors whitespace-nowrap cursor-pointer">
+              Ignorar
+            </button>
+            <span class="flex-1 hidden sm:block"></span>
+            <button type="button" @click="openManualAdd()"
+              class="text-[10px] tracking-widest uppercase border border-zinc-400 dark:border-zinc-600 px-3 py-1.5 text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors whitespace-nowrap cursor-pointer">
+              + Adicionar
             </button>
           </div>
 
-          {# Table #}
-          <div class="flex-1 overflow-auto">
-            <table class="w-full text-xs border-collapse">
-              <thead class="sticky top-0 bg-[#f0f0f4] dark:bg-zinc-900 z-10">
-                <tr class="border-b border-zinc-200 dark:border-zinc-800">
-                  <th class="text-left px-4 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600 whitespace-nowrap">Data</th>
-                  <th class="text-left px-4 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600">Descrição</th>
-                  <th class="text-right px-4 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600 whitespace-nowrap">Valor</th>
-                  <th x-show="false" class="hidden"></th>
-                  <th class="text-left px-4 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600">Devedor</th>
-                  <th class="text-left px-4 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600">Tipo</th>
-                </tr>
-              </thead>
-              <tbody>
-                <template x-for="t in filteredTransactions" :key="t.index">
-                  <tr class="border-b border-zinc-100 dark:border-zinc-800/60 transition-opacity"
-                      :class="t.type === 'ignore' ? 'opacity-35' : ''">
-                    <td class="px-4 py-2 tabular-nums text-zinc-500 dark:text-zinc-400 whitespace-nowrap" x-text="t.date"></td>
-                    <td class="px-4 py-2 text-zinc-700 dark:text-zinc-300 max-w-xs">
-                      <span class="block truncate" x-text="t.description"></span>
-                    </td>
-                    <td class="px-4 py-2 text-right tabular-nums text-zinc-700 dark:text-zinc-300 whitespace-nowrap"
-                        x-text="'R$ ' + formatAmount(t.amount)"></td>
-                    <td x-show="false" class="hidden"></td>
-                    <td class="px-4 py-2">
-                      <select x-model="t.person_id"
-                        class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-[10px] tracking-wider text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 transition-colors w-full"
-                        :disabled="t.type === 'ignore'">
-                        <option value="">—</option>
-                        <template x-for="p in people" :key="p.id">
-                          <option :value="p.id" x-text="p.name"></option>
-                        </template>
-                      </select>
-                    </td>
-                    <td class="px-4 py-2">
-                      <select x-model="t.type"
-                        class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-[10px] tracking-wider text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 transition-colors">
-                        <option value="ignore">Ignorar</option>
-                        <option value="debt">Dívida</option>
-                        <option value="payment">Pagamento</option>
-                      </select>
-                    </td>
-                  </tr>
-                </template>
-                <tr x-show="filteredTransactions.length === 0" x-cloak>
-                  <td colspan="6" class="px-4 py-8 text-center text-xs text-zinc-400 dark:text-zinc-600">
-                    <span x-show="activeTab === 'llm' && !llmAvailable">Servidor LLM offline — configure LLM_BASE_URL no .env.</span>
-                    <span x-show="activeTab !== 'llm' || llmAvailable">Nenhuma transação encontrada.</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          {# Split body #}
+          <div class="flex-1 flex min-h-0">
 
-          {# Footer #}
-          <div class="flex items-center justify-between gap-4 px-6 py-4 border-t border-zinc-200 dark:border-zinc-800 shrink-0">
-            <p class="text-[10px] tracking-wider text-zinc-400 dark:text-zinc-600">
-              <span x-text="readyCount"></span> registro<span x-show="readyCount !== 1">s</span> prontos para importar
-            </p>
-            <div class="flex gap-3">
-              <button type="button" @click="open = false; reset()"
-                class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 transition-colors cursor-pointer">
-                Cancelar
-              </button>
-              <button type="button" @click="save()" :disabled="readyCount === 0 || step === 'saving'"
-                class="border px-5 py-2 text-xs tracking-widest uppercase transition-colors cursor-pointer"
-                :class="readyCount > 0 ? 'border-zinc-600 dark:border-zinc-400 text-zinc-700 dark:text-zinc-300 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white' : 'border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-600 cursor-not-allowed'">
-                <span x-show="step !== 'saving'">Importar <span x-text="readyCount"></span></span>
-                <span x-show="step === 'saving'" x-cloak>Salvando…</span>
-              </button>
+            {# LEFT: Table #}
+            <div class="w-[45%] lg:w-[42%] flex flex-col min-h-0 border-r border-zinc-200 dark:border-zinc-800">
+
+              {# Sticky column headers #}
+              <div class="shrink-0 border-b border-zinc-200 dark:border-zinc-800 bg-[#f0f0f4] dark:bg-zinc-900">
+                <table class="w-full text-xs border-collapse">
+                  <thead>
+                    <tr>
+                      <th class="text-left pl-3 pr-1 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600 whitespace-nowrap cursor-pointer hover:text-zinc-700 dark:hover:text-zinc-300 select-none"
+                          @click="setSort('date')">
+                        Data<span class="ml-0.5" x-text="sortKey === 'date' ? (sortDir === 'asc' ? '↑' : '↓') : '↕'"></span>
+                      </th>
+                      <th class="text-left px-1 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600">Descrição</th>
+                      <th class="text-right px-1 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600 whitespace-nowrap cursor-pointer hover:text-zinc-700 dark:hover:text-zinc-300 select-none"
+                          @click="setSort('amount')">
+                        <span x-text="sortKey === 'amount' ? (sortDir === 'asc' ? '↑' : '↓') : '↕'"></span>Valor
+                      </th>
+                      <th class="text-left px-1 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600">Dev</th>
+                      <th class="text-left pl-1 pr-3 py-2 font-normal tracking-widest uppercase text-zinc-400 dark:text-zinc-600">Tipo</th>
+                    </tr>
+                  </thead>
+                </table>
+              </div>
+
+              {# Scrollable rows #}
+              <div class="flex-1 overflow-auto">
+                <table class="w-full text-xs border-collapse">
+                  <tbody>
+                    <template x-for="t in filteredTransactions" :key="t.index">
+                      <tr class="border-b border-zinc-100 dark:border-zinc-800/60 transition-opacity"
+                          :class="t.type === 'ignore' ? 'opacity-30' : ''">
+                        <td class="pl-3 pr-1 py-1.5 tabular-nums text-zinc-500 dark:text-zinc-400 whitespace-nowrap text-[11px]" x-text="t.date"></td>
+                        <td class="px-1 py-1.5 text-zinc-700 dark:text-zinc-300">
+                          <span class="block truncate text-[11px] max-w-[120px]" :title="t.description" x-text="t.description"></span>
+                          <span x-show="t.manual" x-cloak class="text-[9px] tracking-widest uppercase text-zinc-400 dark:text-zinc-600">manual</span>
+                        </td>
+                        <td class="px-1 py-1.5 text-right tabular-nums text-zinc-700 dark:text-zinc-300 whitespace-nowrap text-[11px]"
+                            x-text="'R$' + formatAmount(t.amount)"></td>
+                        <td class="px-1 py-1.5">
+                          <select x-model="t.person_id"
+                            class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-1 py-0.5 text-[10px] tracking-wider text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 transition-colors w-full min-w-[70px]"
+                            :disabled="t.type === 'ignore'">
+                            <option value="">—</option>
+                            <template x-for="p in people" :key="p.id">
+                              <option :value="p.id" x-text="p.name"></option>
+                            </template>
+                          </select>
+                        </td>
+                        <td class="pl-1 pr-3 py-1.5">
+                          <select x-model="t.type"
+                            class="bg-transparent border border-zinc-300 dark:border-zinc-700 px-1 py-0.5 text-[10px] tracking-wider text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 transition-colors">
+                            <option value="ignore">Ignorar</option>
+                            <option value="debt">Dívida</option>
+                            <option value="payment">Pgto</option>
+                          </select>
+                        </td>
+                      </tr>
+                    </template>
+                    <tr x-show="filteredTransactions.length === 0" x-cloak>
+                      <td colspan="5" class="px-4 py-8 text-center text-xs text-zinc-400 dark:text-zinc-600">
+                        <span x-show="activeTab === 'llm' && !llmAvailable">Servidor LLM offline.</span>
+                        <span x-show="activeTab !== 'llm' || llmAvailable">Nenhuma transação encontrada.</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {# Table footer #}
+              <div class="flex items-center justify-between gap-3 px-4 py-3 border-t border-zinc-200 dark:border-zinc-800 shrink-0">
+                <p class="text-[10px] tracking-wider text-zinc-400 dark:text-zinc-600">
+                  <span x-text="readyCount"></span> prontos
+                </p>
+                <div class="flex gap-3 items-center">
+                  <button type="button" @click="open = false; reset()"
+                    class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 transition-colors cursor-pointer">
+                    Cancelar
+                  </button>
+                  <button type="button" @click="save()" :disabled="readyCount === 0 || step === 'saving'"
+                    class="border px-4 py-1.5 text-xs tracking-widest uppercase transition-colors cursor-pointer"
+                    :class="readyCount > 0 ? 'border-zinc-600 dark:border-zinc-400 text-zinc-700 dark:text-zinc-300 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white' : 'border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-600 cursor-not-allowed'">
+                    <span x-show="step !== 'saving'">Importar <span x-text="readyCount"></span></span>
+                    <span x-show="step === 'saving'" x-cloak>Salvando…</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {# RIGHT: Viewer #}
+            <div class="flex-1 flex flex-col min-h-0">
+
+              {# Viewer tabs #}
+              <div class="flex border-b border-zinc-200 dark:border-zinc-800 shrink-0">
+                <button type="button" @click="viewerTab = 'pdf'"
+                  class="px-4 py-2.5 text-[10px] tracking-widest uppercase transition-colors border-b-2"
+                  :class="viewerTab === 'pdf' ? 'border-zinc-900 dark:border-white text-zinc-900 dark:text-white' : 'border-transparent text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400'">
+                  PDF
+                </button>
+                <button type="button" @click="viewerTab = 'text'"
+                  class="px-4 py-2.5 text-[10px] tracking-widest uppercase transition-colors border-b-2"
+                  :class="viewerTab === 'text' ? 'border-zinc-900 dark:border-white text-zinc-900 dark:text-white' : 'border-transparent text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400'">
+                  Texto extraído
+                </button>
+              </div>
+
+              {# PDF viewer #}
+              <div x-show="viewerTab === 'pdf'" class="flex-1 min-h-0 bg-zinc-200 dark:bg-zinc-800">
+                <iframe x-show="pdfUrl" x-cloak :src="pdfUrl"
+                        class="w-full h-full border-0"></iframe>
+                <div x-show="!pdfUrl" class="flex items-center justify-center h-full">
+                  <p class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600">PDF não disponível</p>
+                </div>
+              </div>
+
+              {# Text viewer #}
+              <div x-show="viewerTab === 'text'" x-cloak class="flex-1 flex flex-col min-h-0">
+                <div class="flex-1 overflow-auto" @mouseup="handleTextSelection()" x-ref="textPanel">
+                  <pre class="p-4 text-xs font-mono text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap break-words leading-relaxed select-text"
+                       x-text="extractedText || 'Texto extraído não disponível.'"></pre>
+                </div>
+                <div x-show="selectedText" x-cloak
+                     class="shrink-0 flex items-center gap-3 px-4 py-2 border-t border-zinc-200 dark:border-zinc-800 bg-[#f0f0f4] dark:bg-zinc-900">
+                  <p class="flex-1 text-[10px] tracking-wider text-zinc-500 dark:text-zinc-400 truncate font-mono" x-text="selectedText"></p>
+                  <button type="button" @click="openAddFromSelection()"
+                    class="text-[10px] tracking-widest uppercase border border-zinc-400 dark:border-zinc-600 px-3 py-1.5 text-zinc-600 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors whitespace-nowrap cursor-pointer shrink-0">
+                    + Adicionar
+                  </button>
+                  <button type="button" @click="selectedText = ''; window.getSelection()?.removeAllRanges()"
+                    class="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors cursor-pointer text-sm shrink-0">✕</button>
+                </div>
+              </div>
+
             </div>
           </div>
+
+          {# Manual add overlay #}
+          <div x-show="showManualAdd" x-cloak
+               class="absolute inset-0 z-10 flex items-center justify-center bg-black/30"
+               @click.self="showManualAdd = false">
+            <div class="w-full max-w-md mx-4 bg-[#f0f0f4] dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 p-6">
+              <p class="text-[10px] tracking-[0.3em] uppercase text-zinc-400 dark:text-zinc-500 mb-5">Adicionar transação manualmente</p>
+              <form @submit.prevent="confirmManualAdd()">
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label class="block text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-600 mb-1.5">Data</label>
+                    <input type="date" x-model="manualDate" required
+                      class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 transition-colors" />
+                  </div>
+                  <div>
+                    <label class="block text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-600 mb-1.5">Valor (R$)</label>
+                    <input type="number" x-model="manualAmount" step="0.01" min="0.01" required
+                      class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 transition-colors" />
+                  </div>
+                </div>
+                <div class="mb-5">
+                  <label class="block text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-600 mb-1.5">Descrição</label>
+                  <input type="text" x-model="manualDescription" required maxlength="255"
+                    class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 transition-colors" />
+                </div>
+                <div class="flex gap-3 justify-end">
+                  <button type="button" @click="showManualAdd = false"
+                    class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 transition-colors cursor-pointer">
+                    Cancelar
+                  </button>
+                  <button type="submit"
+                    class="border border-zinc-600 dark:border-zinc-400 px-5 py-2 text-xs tracking-widest uppercase text-zinc-700 dark:text-zinc-300 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+                    Adicionar
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
         </div>
 
       </div>
@@ -406,16 +503,29 @@
     const people = JSON.parse(document.getElementById('import-modal-people').textContent || '[]');
     return {
       open: false,
-      step: 'upload',   // 'upload' | 'processing' | 'review' | 'saving'
+      step: 'upload',
       bank: '',
       algoTxns: [],
       llmTxns: [],
       llmAvailable: false,
       activeTab: 'algorithm',
+      viewerTab: 'pdf',
       search: '',
       error: '',
+      extractedText: '',
+      selectedText: '',
+      showManualAdd: false,
+      manualDate: '',
+      manualDescription: '',
+      manualAmount: '',
+      pdfBlobUrl: '',
+      pdfServerUrl: '',
+      sortKey: 'date',
+      sortDir: 'asc',
       csrfToken,
       people,
+
+      get pdfUrl() { return this.pdfBlobUrl || this.pdfServerUrl; },
 
       get currentTxns() {
         return this.activeTab === 'algorithm' ? this.algoTxns : this.llmTxns;
@@ -423,12 +533,21 @@
 
       get filteredTransactions() {
         const q = this.search.trim().toLowerCase();
-        if (!q) return this.currentTxns;
-        return this.currentTxns.filter(t =>
+        let txns = this.currentTxns;
+        if (q) txns = txns.filter(t =>
           t.description.toLowerCase().includes(q) ||
           t.date.includes(q) ||
           this.formatAmount(t.amount).includes(q)
         );
+        const key = this.sortKey, dir = this.sortDir;
+        return [...txns].sort((a, b) => {
+          let av = key === 'amount' ? parseFloat(a.amount) : a[key];
+          let bv = key === 'amount' ? parseFloat(b.amount) : b[key];
+          if (typeof av === 'string') av = av.toLowerCase();
+          if (typeof bv === 'string') bv = bv.toLowerCase();
+          const cmp = av < bv ? -1 : av > bv ? 1 : 0;
+          return dir === 'asc' ? cmp : -cmp;
+        });
       },
 
       get readyCount() {
@@ -443,15 +562,36 @@
         this.filteredTransactions.forEach(t => { t.type = type; });
       },
 
+      setSort(key) {
+        if (this.sortKey === key) {
+          this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          this.sortKey = key;
+          this.sortDir = key === 'amount' ? 'desc' : 'asc';
+        }
+      },
+
       reset() {
+        if (this.pdfBlobUrl) { URL.revokeObjectURL(this.pdfBlobUrl); }
+        this.pdfBlobUrl = '';
+        this.pdfServerUrl = '';
         this.step = 'upload';
         this.bank = '';
         this.algoTxns = [];
         this.llmTxns = [];
         this.llmAvailable = false;
         this.activeTab = 'algorithm';
+        this.viewerTab = 'pdf';
         this.search = '';
         this.error = '';
+        this.extractedText = '';
+        this.selectedText = '';
+        this.showManualAdd = false;
+        this.manualDate = '';
+        this.manualDescription = '';
+        this.manualAmount = '';
+        this.sortKey = 'date';
+        this.sortDir = 'asc';
       },
 
       _loadData(data) {
@@ -459,7 +599,9 @@
         this.llmAvailable = data.llm_available ?? false;
         this.algoTxns = (data.algorithm || []).map((t, i) => ({ ...t, index: i, person_id: '', type: 'ignore' }));
         this.llmTxns = (data.llm || []).map((t, i) => ({ ...t, index: i, person_id: '', type: 'ignore' }));
+        this.extractedText = data.extracted_text || '';
         this.activeTab = 'algorithm';
+        this.viewerTab = this.pdfUrl ? 'pdf' : (this.extractedText ? 'text' : 'pdf');
         this.step = 'review';
       },
 
@@ -474,6 +616,9 @@
       },
 
       async processFile(file) {
+        if (this.pdfBlobUrl) URL.revokeObjectURL(this.pdfBlobUrl);
+        this.pdfBlobUrl = URL.createObjectURL(file);
+        this.pdfServerUrl = '';
         this.step = 'processing';
         this.error = '';
         const fd = new FormData();
@@ -492,7 +637,10 @@
         }
       },
 
-      async reopenSaved(url) {
+      async reopenSaved(url, pdfUrl) {
+        if (this.pdfBlobUrl) URL.revokeObjectURL(this.pdfBlobUrl);
+        this.pdfBlobUrl = '';
+        this.pdfServerUrl = pdfUrl || '';
         this.open = true;
         this.step = 'processing';
         this.bank = '';
@@ -523,6 +671,90 @@
         } catch(e) {
           this.step = 'review';
         }
+      },
+
+      handleTextSelection() {
+        const sel = window.getSelection();
+        if (!sel || sel.isCollapsed) return;
+        const panel = this.$refs.textPanel;
+        if (!panel || !panel.contains(sel.anchorNode)) return;
+        const text = sel.toString().trim();
+        if (text) this.selectedText = text;
+      },
+
+      openManualAdd() {
+        this.manualDate = '';
+        this.manualDescription = '';
+        this.manualAmount = '';
+        this.showManualAdd = true;
+      },
+
+      openAddFromSelection() {
+        this.manualDate = '';
+        this.manualDescription = '';
+        this.manualAmount = '';
+
+        const text = this.selectedText;
+        const dateMatch = text.match(/(\d{4}-\d{2}-\d{2})/);
+        if (dateMatch) this.manualDate = dateMatch[1];
+
+        const amountMatch = text.match(/(\d{1,3}(?:\.\d{3})*,\d{2})|(\d+\.\d{2})/);
+        if (amountMatch) {
+          const raw = amountMatch[0];
+          if (raw.includes(',') && raw.includes('.')) {
+            this.manualAmount = raw.replace(/\./g, '').replace(',', '.');
+          } else if (raw.includes(',')) {
+            this.manualAmount = raw.replace(',', '.');
+          } else {
+            this.manualAmount = raw;
+          }
+        }
+
+        let desc = text;
+        if (dateMatch) desc = desc.replace(dateMatch[0], '');
+        if (amountMatch) desc = desc.replace(amountMatch[0], '');
+        this.manualDescription = desc.replace(/\s+/g, ' ').trim().substring(0, 255);
+
+        this.showManualAdd = true;
+      },
+
+      async confirmManualAdd() {
+        if (!this.manualDate || !this.manualDescription || !this.manualAmount) return;
+
+        const newTxn = {
+          index: 'manual_' + Date.now(),
+          date: this.manualDate,
+          description: this.manualDescription,
+          amount: parseFloat(this.manualAmount).toFixed(2),
+          person_id: '',
+          type: 'debt',
+          manual: true,
+        };
+
+        this.llmTxns.push(newTxn);
+        this.activeTab = 'llm';
+
+        try {
+          await fetch('{% url "save_llm_feedback" %}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': this.csrfToken },
+            body: JSON.stringify({
+              bank: this.bank,
+              corrections: [{
+                date: this.manualDate,
+                description: this.manualDescription,
+                amount: this.manualAmount,
+                context: this.selectedText || '',
+              }]
+            }),
+          });
+        } catch(e) {
+          console.error('Failed to save correction:', e);
+        }
+
+        this.showManualAdd = false;
+        this.selectedText = '';
+        window.getSelection()?.removeAllRanges();
       },
     };
   }
