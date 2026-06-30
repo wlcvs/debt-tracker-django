@@ -73,162 +73,272 @@
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 items-start">
 
   {# ── Debts ── #}
-  <section class="flex flex-col gap-4 border border-zinc-300 dark:border-zinc-700 p-4">
-    <p class="text-xs tracking-[0.25em] uppercase text-zinc-400 dark:text-zinc-500">Dívidas</p>
+  <section class="flex flex-col gap-4 border border-zinc-300 dark:border-zinc-700 p-4"
+    x-data="{
+      showFilters: false,
+      debtSearch: '',
+      debtDateFrom: '',
+      debtDateTo: '',
+      debtAmountMin: '',
+      debtAmountMax: '',
+      debtSortKey: 'date',
+      debtSortDir: 'desc',
+
+      matchDebt(title, desc, method, date, amount, q, dateFrom, dateTo, amtMin, amtMax) {
+        function parseAmt(s) { const n = s.replace(',', '.'); return { val: parseFloat(n), isInt: !n.includes('.') }; }
+        if (q.trim()) {
+          const needle = q.trim().toLowerCase();
+          const amtStr = amount.toFixed(2).replace('.', ',');
+          if (![title, desc, method, amtStr].some(s => s.toLowerCase().includes(needle))) return false;
+        }
+        if (dateFrom && date < dateFrom) return false;
+        if (dateTo && date > dateTo) return false;
+        if (amtMin) { const f = parseAmt(amtMin); if (!isNaN(f.val) && (f.isInt ? Math.floor(amount) : amount) < f.val) return false; }
+        if (amtMax) { const f = parseAmt(amtMax); if (!isNaN(f.val) && (f.isInt ? Math.floor(amount) : amount) > f.val) return false; }
+        return true;
+      },
+
+      sortList(selector) {
+        const key = this.debtSortKey, dir = this.debtSortDir;
+        const items = [...this.$el.querySelectorAll(selector)];
+        const sorted = [...items].sort((a, b) => {
+          const av = key === 'date' ? a.dataset.date : parseFloat(a.dataset.amount);
+          const bv = key === 'date' ? b.dataset.date : parseFloat(b.dataset.amount);
+          const cmp = av < bv ? -1 : av > bv ? 1 : 0;
+          return dir === 'asc' ? cmp : -cmp;
+        });
+        sorted.forEach((el, i) => { el.style.order = i; });
+      },
+
+      init() {
+        this.$watch('debtSortKey', () => this.sortList('[data-debt-item]'));
+        this.$watch('debtSortDir', () => this.sortList('[data-debt-item]'));
+      }
+    }">
+
+    <div @click.outside="showFilters = false">
+      <div class="flex items-center justify-between">
+        <p class="text-xs tracking-[0.25em] uppercase text-zinc-400 dark:text-zinc-500">Dívidas</p>
+        <button type="button" @click="showFilters = !showFilters"
+          :class="(showFilters || debtSearch || debtDateFrom || debtDateTo || debtAmountMin || debtAmountMax) ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-400 dark:text-zinc-600'"
+          class="text-[10px] tracking-widest uppercase hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors">
+          Filtros
+        </button>
+      </div>
+
+      <div x-show="showFilters" x-cloak class="flex flex-col gap-2 mt-3">
+        <input type="search" x-model="debtSearch" placeholder="Pesquisar dívidas..."
+          class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-wider placeholder:text-zinc-400 dark:placeholder:text-zinc-600 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
+        <div class="flex gap-2">
+          <div class="flex-1">
+            <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">De</p>
+            <input type="date" x-model="debtDateFrom"
+              class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 text-xs text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
+          </div>
+          <div class="flex-1">
+            <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Até</p>
+            <input type="date" x-model="debtDateTo"
+              class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 text-xs text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <div class="flex-1">
+            <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Valor mín.</p>
+            <input type="text" inputmode="decimal" x-model="debtAmountMin" placeholder="0,00"
+              class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 text-xs placeholder:text-zinc-300 dark:placeholder:text-zinc-700 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
+          </div>
+          <div class="flex-1">
+            <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Valor máx.</p>
+            <input type="text" inputmode="decimal" x-model="debtAmountMax" placeholder="0,00"
+              class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 text-xs placeholder:text-zinc-300 dark:placeholder:text-zinc-700 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
+          </div>
+        </div>
+        <div class="flex items-center gap-3 flex-wrap">
+          <p class="text-[10px] tracking-widest uppercase text-zinc-400">Ordenar</p>
+          <button type="button"
+            @click="if (debtSortKey === 'date') { debtSortDir = debtSortDir === 'asc' ? 'desc' : 'asc'; } else { debtSortKey = 'date'; debtSortDir = 'desc'; }"
+            class="text-[10px] tracking-widest uppercase transition-colors"
+            :class="debtSortKey === 'date' ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400'">
+            Data <span x-show="debtSortKey === 'date'" x-text="debtSortDir === 'asc' ? '↑' : '↓'"></span>
+          </button>
+          <button type="button"
+            @click="if (debtSortKey === 'amount') { debtSortDir = debtSortDir === 'asc' ? 'desc' : 'asc'; } else { debtSortKey = 'amount'; debtSortDir = 'desc'; }"
+            class="text-[10px] tracking-widest uppercase transition-colors"
+            :class="debtSortKey === 'amount' ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400'">
+            Valor <span x-show="debtSortKey === 'amount'" x-text="debtSortDir === 'asc' ? '↑' : '↓'"></span>
+          </button>
+          <button type="button"
+            @click="debtSearch = ''; debtDateFrom = ''; debtDateTo = ''; debtAmountMin = ''; debtAmountMax = ''; debtSortKey = 'date'; debtSortDir = 'desc';"
+            class="text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors ml-auto">
+            Limpar
+          </button>
+        </div>
+      </div>
+    </div>
 
     {% if debts %}
       <ul class="flex flex-col">
         {% for debt in debts %}
-          <li x-data="{
-                open: false,
-                editing: false,
-                methodOpen: false,
-                methodError: false,
-                methods: [
-                  { value: 'PIX', label: 'Pix' },
-                  { value: 'CASH', label: 'Dinheiro' },
-                  {% for card in debt_form.credit_card.field.queryset %}{ value: 'card:{{ card.pk }}', label: '{{ card.label|escapejs }}' },{% endfor %}
-                ],
-                method: '{% if debt.credit_card %}card:{{ debt.credit_card.pk }}{% elif debt.method %}{{ debt.method }}{% endif %}',
-                initMethod: '{% if debt.credit_card %}card:{{ debt.credit_card.pk }}{% elif debt.method %}{{ debt.method }}{% endif %}',
-                get methodLabel() { const o = this.methods.find(m => m.value === this.method); return o ? o.label : '— Método —'; },
-                reset() {
-                  this.editing = false;
-                  this.method = this.initMethod;
-                  this.methodOpen = false;
-                  this.methodError = false;
-                  this.$nextTick(() => { if (this.$refs.editDebtForm) this.$refs.editDebtForm.reset(); });
-                }
-              }"
-              x-init="$watch('open', v => { if (!v) reset(); })"
-              class="border-b border-zinc-300 dark:border-zinc-700 last:border-0">
+          <li class="border-b border-zinc-300 dark:border-zinc-700 last:border-0"
+              data-debt-item data-date="{{ debt.date|date:'Y-m-d' }}" data-amount="{{ debt.amount|unlocalize }}"
+              x-show="matchDebt(
+                '{{ debt.title|escapejs }}',
+                '{{ debt.description|escapejs }}',
+                '{% if debt.credit_card %}{{ debt.credit_card.label|escapejs }}{% elif debt.method %}{{ debt.get_method_display|escapejs }}{% endif %}',
+                '{{ debt.date|date:'Y-m-d' }}',
+                {{ debt.amount|unlocalize }},
+                debtSearch, debtDateFrom, debtDateTo, debtAmountMin, debtAmountMax
+              )">
+            <div x-data="{
+                  open: false,
+                  editing: false,
+                  methodOpen: false,
+                  methodError: false,
+                  methods: [
+                    { value: 'PIX', label: 'Pix' },
+                    { value: 'CASH', label: 'Dinheiro' },
+                    {% for card in debt_form.credit_card.field.queryset %}{ value: 'card:{{ card.pk }}', label: '{{ card.label|escapejs }}' },{% endfor %}
+                  ],
+                  method: '{% if debt.credit_card %}card:{{ debt.credit_card.pk }}{% elif debt.method %}{{ debt.method }}{% endif %}',
+                  initMethod: '{% if debt.credit_card %}card:{{ debt.credit_card.pk }}{% elif debt.method %}{{ debt.method }}{% endif %}',
+                  get methodLabel() { const o = this.methods.find(m => m.value === this.method); return o ? o.label : '— Método —'; },
+                  reset() {
+                    this.editing = false;
+                    this.method = this.initMethod;
+                    this.methodOpen = false;
+                    this.methodError = false;
+                    this.$nextTick(() => { if (this.$refs.editDebtForm) this.$refs.editDebtForm.reset(); });
+                  }
+                }"
+                x-init="$watch('open', v => { if (!v) reset(); })">
 
-            <button @click="open = true"
-              class="w-full flex justify-between items-center py-3 hover:opacity-60 transition-opacity text-left gap-4{% if debt.paid %} opacity-50{% endif %}">
-              <span class="text-xs tracking-widest text-zinc-700 dark:text-zinc-300 truncate{% if debt.paid %} line-through{% endif %}">{% if debt.title %}{{ debt.title }}{% else %}<span class="text-zinc-400 dark:text-zinc-600 italic">sem título</span>{% endif %}</span>
-              <span class="text-xs text-zinc-700 dark:text-zinc-300 shrink-0{% if debt.paid %} line-through{% endif %}">R$ {{ debt.amount|floatformat:2 }}</span>
-            </button>
+              <button @click="open = true"
+                class="w-full flex justify-between items-center py-3 hover:opacity-60 transition-opacity text-left gap-4{% if debt.paid %} opacity-50{% endif %}">
+                <span class="text-xs tracking-widest text-zinc-700 dark:text-zinc-300 truncate{% if debt.paid %} line-through{% endif %}">{% if debt.title %}{{ debt.title }}{% else %}<span class="text-zinc-400 dark:text-zinc-600 italic">sem título</span>{% endif %}</span>
+                <span class="text-xs text-zinc-700 dark:text-zinc-300 shrink-0{% if debt.paid %} line-through{% endif %}">R$ {{ debt.amount|floatformat:2 }}</span>
+              </button>
 
-            <template x-teleport="body">
-              <div x-show="open" style="display:none"
-                   class="fixed inset-0 z-40 flex items-center justify-center p-4"
-                   @keydown.escape.window="open = false">
-                <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="open = false"></div>
-                <div x-trap.inert.noscroll="open"
-                     class="relative bg-[#f0f0f4] dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 w-full max-w-sm max-h-[90vh] overflow-y-auto">
+              <template x-teleport="body">
+                <div x-show="open" style="display:none"
+                     class="fixed inset-0 z-40 flex items-center justify-center p-4"
+                     @keydown.escape.window="open = false">
+                  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="open = false"></div>
+                  <div x-trap.inert.noscroll="open"
+                       class="relative bg-[#f0f0f4] dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 w-full max-w-sm max-h-[90vh] overflow-y-auto">
 
-                  <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-zinc-200 dark:border-zinc-800">
-                    <p class="text-[10px] tracking-[0.3em] uppercase text-zinc-400 dark:text-zinc-500">Dívida</p>
-                    <button @click="open = false" class="text-xs text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">✕</button>
-                  </div>
+                    <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-zinc-200 dark:border-zinc-800">
+                      <p class="text-[10px] tracking-[0.3em] uppercase text-zinc-400 dark:text-zinc-500">Dívida</p>
+                      <button @click="open = false" class="text-xs text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">✕</button>
+                    </div>
 
-                  <div x-show="!editing" class="px-6 py-5">
-                    <p class="text-sm tracking-widest uppercase text-zinc-900 dark:text-white mb-1">{{ debt.title }}</p>
-                    <p class="text-3xl tracking-tight text-zinc-900 dark:text-white mb-3">R$ {{ debt.amount|floatformat:2 }}</p>
-                    {% if debt.description %}
-                      <p class="text-xs tracking-wider text-zinc-500 dark:text-zinc-400 -mt-2 mb-2">{{ debt.description }}</p>
-                    {% endif %}
-                    <div class="flex items-center gap-3 mb-6 flex-wrap">
-                      <span class="text-xs text-zinc-400 dark:text-zinc-600">{{ debt.date }}</span>
-                      {% if debt.credit_card %}
-                        <span class="text-[10px] tracking-widest uppercase border border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 px-1.5 py-0.5">{{ debt.credit_card.label }}</span>
-                      {% elif debt.method %}
-                        <span class="text-[10px] tracking-widest uppercase border border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 px-1.5 py-0.5">{{ debt.get_method_display }}</span>
+                    <div x-show="!editing" class="px-6 py-5">
+                      <p class="text-sm tracking-widest uppercase text-zinc-900 dark:text-white mb-1">{{ debt.title }}</p>
+                      <p class="text-3xl tracking-tight text-zinc-900 dark:text-white mb-3">R$ {{ debt.amount|floatformat:2 }}</p>
+                      {% if debt.description %}
+                        <p class="text-xs tracking-wider text-zinc-500 dark:text-zinc-400 -mt-2 mb-2">{{ debt.description }}</p>
                       {% endif %}
-                    </div>
-                    <div class="flex flex-wrap gap-3 items-center">
-                      <button @click="editing = true"
-                        class="border border-zinc-600 dark:border-zinc-400 px-5 py-2 text-xs tracking-widest uppercase text-zinc-700 dark:text-zinc-300 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
-                        Editar
-                      </button>
-                      <form method="post" action="{% url 'toggle_debt_paid' person.pk debt.pk %}">
-                        {% csrf_token %}
-                        <button type="submit"
-                          class="border px-5 py-2 text-xs tracking-widest uppercase transition-colors cursor-pointer {% if debt.paid %}border-zinc-600 dark:border-zinc-400 text-zinc-700 dark:text-zinc-300 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white{% else %}border-zinc-500 dark:border-zinc-500 text-zinc-600 dark:text-zinc-400 hover:border-zinc-700 hover:text-zinc-800 dark:hover:border-zinc-300 dark:hover:text-zinc-200{% endif %}">
-                          {% if debt.paid %}Desfazer{% else %}Marcar como paga{% endif %}
-                        </button>
-                      </form>
-                      <button @click="open = false; $store.modal.open('Excluir dívida', '&quot;{{ debt.title|escapejs }}&quot; será removida permanentemente.', '{% url 'delete_debt' person.pk debt.pk %}')"
-                        class="border border-red-500 dark:border-red-400 px-5 py-2 text-xs tracking-widest uppercase text-red-500 dark:text-red-400 hover:border-red-400 hover:text-red-400 dark:hover:border-red-300 dark:hover:text-red-300 transition-colors cursor-pointer">
-                        Excluir
-                      </button>
-                    </div>
-                  </div>
-
-                  <form x-show="editing" x-cloak x-ref="editDebtForm"
-                        method="post" action="{% url 'edit_debt' person.pk debt.pk %}"
-                        class="px-6 py-5 flex flex-col gap-3"
-                        @submit="if (!method) { $event.preventDefault(); methodError = true; return; } methodError = false;">
-                    {% csrf_token %}
-                    <div>
-                      <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Título</p>
-                      <input type="text" name="title" value="{{ debt.title }}" required
-                        placeholder="Ex: Supermercado"
-                        class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-wider placeholder:text-zinc-300 dark:placeholder:text-zinc-700 text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
-                    </div>
-                    <div>
-                      <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Descrição <span class="normal-case text-zinc-300 dark:text-zinc-700">(opcional)</span></p>
-                      <input type="text" name="description" value="{{ debt.description }}"
-                        placeholder="Ex: Parcelado 3x"
-                        class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-wider placeholder:text-zinc-300 dark:placeholder:text-zinc-700 text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
-                    </div>
-                    <div class="flex gap-3">
-                      <div>
-                        <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Valor</p>
-                        <input type="text" inputmode="decimal" name="amount" value="{{ debt.amount|floatformat:2 }}" required
-                          class="w-28 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-wider text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
+                      <div class="flex items-center gap-3 mb-6 flex-wrap">
+                        <span class="text-xs text-zinc-400 dark:text-zinc-600">{{ debt.date }}</span>
+                        {% if debt.credit_card %}
+                          <span class="text-[10px] tracking-widest uppercase border border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 px-1.5 py-0.5">{{ debt.credit_card.label }}</span>
+                        {% elif debt.method %}
+                          <span class="text-[10px] tracking-widest uppercase border border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 px-1.5 py-0.5">{{ debt.get_method_display }}</span>
+                        {% endif %}
                       </div>
-                      <div class="flex-1">
-                        <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Data</p>
-                        <input type="date" name="date" value="{{ debt.date|date:'Y-m-d' }}" required
-                          class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-wider text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
-                      </div>
-                    </div>
-                    <div>
-                      <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Método</p>
-                      <div class="relative" @click.outside="methodOpen = false">
-                        <button type="button" @click="methodOpen = !methodOpen"
-                          class="w-full text-left flex justify-between items-center bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest focus:outline-none transition-colors"
-                          :class="method ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-400 dark:text-zinc-600'">
-                          <span x-text="methodLabel"></span>
-                          <span class="text-[10px] text-zinc-400 ml-2">▾</span>
-                        </button>
-                        <p x-show="methodError" x-cloak class="text-xs text-red-500 mt-1 tracking-wide">Campo obrigatório</p>
-                        <div x-show="methodOpen" x-cloak
-                          class="absolute z-10 left-0 right-0 top-full mt-px border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 max-h-40 overflow-y-auto">
-                          <template x-for="opt in methods" :key="opt.value">
-                            <button type="button"
-                              @click="method = opt.value; methodOpen = false; methodError = false;"
-                              x-text="opt.label"
-                              :class="method === opt.value ? 'text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-400'"
-                              class="w-full text-left px-3 py-2 text-xs tracking-widest hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
-                            </button>
-                          </template>
-                        </div>
-                        <input type="hidden" name="payment_method" :value="method" />
-                      </div>
-                    </div>
-                    <div class="flex justify-between items-center pt-1">
-                      <div class="flex gap-3">
-                        <button type="submit"
+                      <div class="flex flex-wrap gap-3 items-center">
+                        <button @click="editing = true"
                           class="border border-zinc-600 dark:border-zinc-400 px-5 py-2 text-xs tracking-widest uppercase text-zinc-700 dark:text-zinc-300 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
-                          Salvar
+                          Editar
                         </button>
-                        <button type="button" @click="editing = false"
-                          class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors cursor-pointer">
-                          Cancelar
+                        <form method="post" action="{% url 'toggle_debt_paid' person.pk debt.pk %}">
+                          {% csrf_token %}
+                          <button type="submit"
+                            class="border px-5 py-2 text-xs tracking-widest uppercase transition-colors cursor-pointer {% if debt.paid %}border-zinc-600 dark:border-zinc-400 text-zinc-700 dark:text-zinc-300 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white{% else %}border-zinc-500 dark:border-zinc-500 text-zinc-600 dark:text-zinc-400 hover:border-zinc-700 hover:text-zinc-800 dark:hover:border-zinc-300 dark:hover:text-zinc-200{% endif %}">
+                            {% if debt.paid %}Desfazer{% else %}Marcar como paga{% endif %}
+                          </button>
+                        </form>
+                        <button @click="open = false; $store.modal.open('Excluir dívida', '&quot;{{ debt.title|escapejs }}&quot; será removida permanentemente.', '{% url 'delete_debt' person.pk debt.pk %}')"
+                          class="border border-red-500 dark:border-red-400 px-5 py-2 text-xs tracking-widest uppercase text-red-500 dark:text-red-400 hover:border-red-400 hover:text-red-400 dark:hover:border-red-300 dark:hover:text-red-300 transition-colors cursor-pointer">
+                          Excluir
                         </button>
                       </div>
-                      <button type="button"
-                        @click="open = false; $store.modal.open('Excluir dívida', '&quot;{{ debt.title|escapejs }}&quot; será removida permanentemente.', '{% url 'delete_debt' person.pk debt.pk %}')"
-                        class="text-xs tracking-widest uppercase text-red-500 dark:text-red-400 hover:text-red-400 dark:hover:text-red-300 transition-colors cursor-pointer">
-                        Excluir
-                      </button>
                     </div>
-                  </form>
+
+                    <form x-show="editing" x-cloak x-ref="editDebtForm"
+                          method="post" action="{% url 'edit_debt' person.pk debt.pk %}"
+                          class="px-6 py-5 flex flex-col gap-3"
+                          @submit="if (!method) { $event.preventDefault(); methodError = true; return; } methodError = false;">
+                      {% csrf_token %}
+                      <div>
+                        <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Título</p>
+                        <input type="text" name="title" value="{{ debt.title }}" required
+                          placeholder="Ex: Supermercado"
+                          class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-wider placeholder:text-zinc-300 dark:placeholder:text-zinc-700 text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
+                      </div>
+                      <div>
+                        <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Descrição <span class="normal-case text-zinc-300 dark:text-zinc-700">(opcional)</span></p>
+                        <input type="text" name="description" value="{{ debt.description }}"
+                          placeholder="Ex: Parcelado 3x"
+                          class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-wider placeholder:text-zinc-300 dark:placeholder:text-zinc-700 text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
+                      </div>
+                      <div class="flex gap-3">
+                        <div>
+                          <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Valor</p>
+                          <input type="text" inputmode="decimal" name="amount" value="{{ debt.amount|floatformat:2 }}" required
+                            class="w-28 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-wider text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
+                        </div>
+                        <div class="flex-1">
+                          <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Data</p>
+                          <input type="date" name="date" value="{{ debt.date|date:'Y-m-d' }}" required
+                            class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-wider text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
+                        </div>
+                      </div>
+                      <div>
+                        <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Método</p>
+                        <div class="relative" @click.outside="methodOpen = false">
+                          <button type="button" @click="methodOpen = !methodOpen"
+                            class="w-full text-left flex justify-between items-center bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest focus:outline-none transition-colors"
+                            :class="method ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-400 dark:text-zinc-600'">
+                            <span x-text="methodLabel"></span>
+                            <span class="text-[10px] text-zinc-400 ml-2">▾</span>
+                          </button>
+                          <p x-show="methodError" x-cloak class="text-xs text-red-500 mt-1 tracking-wide">Campo obrigatório</p>
+                          <div x-show="methodOpen" x-cloak
+                            class="absolute z-10 left-0 right-0 top-full mt-px border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 max-h-40 overflow-y-auto">
+                            <template x-for="opt in methods" :key="opt.value">
+                              <button type="button"
+                                @click="method = opt.value; methodOpen = false; methodError = false;"
+                                x-text="opt.label"
+                                :class="method === opt.value ? 'text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-400'"
+                                class="w-full text-left px-3 py-2 text-xs tracking-widest hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+                              </button>
+                            </template>
+                          </div>
+                          <input type="hidden" name="payment_method" :value="method" />
+                        </div>
+                      </div>
+                      <div class="flex justify-between items-center pt-1">
+                        <div class="flex gap-3">
+                          <button type="submit"
+                            class="border border-zinc-600 dark:border-zinc-400 px-5 py-2 text-xs tracking-widest uppercase text-zinc-700 dark:text-zinc-300 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+                            Salvar
+                          </button>
+                          <button type="button" @click="editing = false"
+                            class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors cursor-pointer">
+                            Cancelar
+                          </button>
+                        </div>
+                        <button type="button"
+                          @click="open = false; $store.modal.open('Excluir dívida', '&quot;{{ debt.title|escapejs }}&quot; será removida permanentemente.', '{% url 'delete_debt' person.pk debt.pk %}')"
+                          class="text-xs tracking-widest uppercase text-red-500 dark:text-red-400 hover:text-red-400 dark:hover:text-red-300 transition-colors cursor-pointer">
+                          Excluir
+                        </button>
+                      </div>
+                    </form>
+                  </div>
                 </div>
-              </div>
-            </template>
+              </template>
+            </div>
           </li>
         {% endfor %}
       </ul>
@@ -307,142 +417,250 @@
   </section>
 
   {# ── Payments ── #}
-  <section class="flex flex-col gap-4 border border-zinc-300 dark:border-zinc-700 p-4">
-    <p class="text-xs tracking-[0.25em] uppercase text-zinc-400 dark:text-zinc-500">Pagamentos</p>
+  <section class="flex flex-col gap-4 border border-zinc-300 dark:border-zinc-700 p-4"
+    x-data="{
+      showFilters: false,
+      paymentSearch: '',
+      paymentDateFrom: '',
+      paymentDateTo: '',
+      paymentAmountMin: '',
+      paymentAmountMax: '',
+      paymentSortKey: 'date',
+      paymentSortDir: 'desc',
+
+      matchPayment(desc, method, date, amount, q, dateFrom, dateTo, amtMin, amtMax) {
+        function parseAmt(s) { const n = s.replace(',', '.'); return { val: parseFloat(n), isInt: !n.includes('.') }; }
+        if (q.trim()) {
+          const needle = q.trim().toLowerCase();
+          const amtStr = amount.toFixed(2).replace('.', ',');
+          if (![desc, method, amtStr].some(s => s.toLowerCase().includes(needle))) return false;
+        }
+        if (dateFrom && date < dateFrom) return false;
+        if (dateTo && date > dateTo) return false;
+        if (amtMin) { const f = parseAmt(amtMin); if (!isNaN(f.val) && (f.isInt ? Math.floor(amount) : amount) < f.val) return false; }
+        if (amtMax) { const f = parseAmt(amtMax); if (!isNaN(f.val) && (f.isInt ? Math.floor(amount) : amount) > f.val) return false; }
+        return true;
+      },
+
+      sortList(selector) {
+        const key = this.paymentSortKey, dir = this.paymentSortDir;
+        const items = [...this.$el.querySelectorAll(selector)];
+        const sorted = [...items].sort((a, b) => {
+          const av = key === 'date' ? a.dataset.date : parseFloat(a.dataset.amount);
+          const bv = key === 'date' ? b.dataset.date : parseFloat(b.dataset.amount);
+          const cmp = av < bv ? -1 : av > bv ? 1 : 0;
+          return dir === 'asc' ? cmp : -cmp;
+        });
+        sorted.forEach((el, i) => { el.style.order = i; });
+      },
+
+      init() {
+        this.$watch('paymentSortKey', () => this.sortList('[data-payment-item]'));
+        this.$watch('paymentSortDir', () => this.sortList('[data-payment-item]'));
+      }
+    }">
+
+    <div @click.outside="showFilters = false">
+      <div class="flex items-center justify-between">
+        <p class="text-xs tracking-[0.25em] uppercase text-zinc-400 dark:text-zinc-500">Pagamentos</p>
+        <button type="button" @click="showFilters = !showFilters"
+          :class="(showFilters || paymentSearch || paymentDateFrom || paymentDateTo || paymentAmountMin || paymentAmountMax) ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-400 dark:text-zinc-600'"
+          class="text-[10px] tracking-widest uppercase hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors">
+          Filtros
+        </button>
+      </div>
+
+      <div x-show="showFilters" x-cloak class="flex flex-col gap-2 mt-3">
+        <input type="search" x-model="paymentSearch" placeholder="Pesquisar pagamentos..."
+          class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-wider placeholder:text-zinc-400 dark:placeholder:text-zinc-600 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
+        <div class="flex gap-2">
+          <div class="flex-1">
+            <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">De</p>
+            <input type="date" x-model="paymentDateFrom"
+              class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 text-xs text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
+          </div>
+          <div class="flex-1">
+            <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Até</p>
+            <input type="date" x-model="paymentDateTo"
+              class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 text-xs text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <div class="flex-1">
+            <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Valor mín.</p>
+            <input type="text" inputmode="decimal" x-model="paymentAmountMin" placeholder="0,00"
+              class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 text-xs placeholder:text-zinc-300 dark:placeholder:text-zinc-700 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
+          </div>
+          <div class="flex-1">
+            <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Valor máx.</p>
+            <input type="text" inputmode="decimal" x-model="paymentAmountMax" placeholder="0,00"
+              class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 text-xs placeholder:text-zinc-300 dark:placeholder:text-zinc-700 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
+          </div>
+        </div>
+        <div class="flex items-center gap-3 flex-wrap">
+          <p class="text-[10px] tracking-widest uppercase text-zinc-400">Ordenar</p>
+          <button type="button"
+            @click="if (paymentSortKey === 'date') { paymentSortDir = paymentSortDir === 'asc' ? 'desc' : 'asc'; } else { paymentSortKey = 'date'; paymentSortDir = 'desc'; }"
+            class="text-[10px] tracking-widest uppercase transition-colors"
+            :class="paymentSortKey === 'date' ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400'">
+            Data <span x-show="paymentSortKey === 'date'" x-text="paymentSortDir === 'asc' ? '↑' : '↓'"></span>
+          </button>
+          <button type="button"
+            @click="if (paymentSortKey === 'amount') { paymentSortDir = paymentSortDir === 'asc' ? 'desc' : 'asc'; } else { paymentSortKey = 'amount'; paymentSortDir = 'desc'; }"
+            class="text-[10px] tracking-widest uppercase transition-colors"
+            :class="paymentSortKey === 'amount' ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400'">
+            Valor <span x-show="paymentSortKey === 'amount'" x-text="paymentSortDir === 'asc' ? '↑' : '↓'"></span>
+          </button>
+          <button type="button"
+            @click="paymentSearch = ''; paymentDateFrom = ''; paymentDateTo = ''; paymentAmountMin = ''; paymentAmountMax = ''; paymentSortKey = 'date'; paymentSortDir = 'desc';"
+            class="text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors ml-auto">
+            Limpar
+          </button>
+        </div>
+      </div>
+    </div>
 
     {% if payments %}
       <ul class="flex flex-col">
         {% for payment in payments %}
-          <li x-data="{
-                open: false,
-                editing: false,
-                methodOpen: false,
-                methods: [
-                  { value: 'PIX', label: 'Pix' },
-                  { value: 'CASH', label: 'Dinheiro' },
-                ],
-                method: '{{ payment.method }}',
-                initMethod: '{{ payment.method }}',
-                get methodLabel() { const o = this.methods.find(m => m.value === this.method); return o ? o.label : '— Método —'; },
-                reset() {
-                  this.editing = false;
-                  this.method = this.initMethod;
-                  this.methodOpen = false;
-                  this.$nextTick(() => { if (this.$refs.editPaymentForm) this.$refs.editPaymentForm.reset(); });
-                }
-              }"
-              x-init="$watch('open', v => { if (!v) reset(); })"
-              class="border-b border-zinc-300 dark:border-zinc-700 last:border-0">
+          <li class="border-b border-zinc-300 dark:border-zinc-700 last:border-0"
+              data-payment-item data-date="{{ payment.date|date:'Y-m-d' }}" data-amount="{{ payment.amount|unlocalize }}"
+              x-show="matchPayment(
+                '{{ payment.description|escapejs }}',
+                '{{ payment.get_method_display|escapejs }}',
+                '{{ payment.date|date:'Y-m-d' }}',
+                {{ payment.amount|unlocalize }},
+                paymentSearch, paymentDateFrom, paymentDateTo, paymentAmountMin, paymentAmountMax
+              )">
+            <div x-data="{
+                  open: false,
+                  editing: false,
+                  methodOpen: false,
+                  methods: [
+                    { value: 'PIX', label: 'Pix' },
+                    { value: 'CASH', label: 'Dinheiro' },
+                  ],
+                  method: '{{ payment.method }}',
+                  initMethod: '{{ payment.method }}',
+                  get methodLabel() { const o = this.methods.find(m => m.value === this.method); return o ? o.label : '— Método —'; },
+                  reset() {
+                    this.editing = false;
+                    this.method = this.initMethod;
+                    this.methodOpen = false;
+                    this.$nextTick(() => { if (this.$refs.editPaymentForm) this.$refs.editPaymentForm.reset(); });
+                  }
+                }"
+                x-init="$watch('open', v => { if (!v) reset(); })">
 
-            {# List row — amount as main element #}
-            <button @click="open = true"
-              class="w-full flex justify-between items-center py-3 hover:opacity-60 transition-opacity text-left gap-4">
-              <span class="text-xs tracking-widest text-zinc-700 dark:text-zinc-300">R$ {{ payment.amount|floatformat:2 }}</span>
-              <span class="text-[10px] tracking-widest uppercase border border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 px-1.5 py-0.5 shrink-0">{{ payment.get_method_display }}</span>
-            </button>
+              <button @click="open = true"
+                class="w-full flex justify-between items-center py-3 hover:opacity-60 transition-opacity text-left gap-4">
+                <span class="text-xs tracking-widest text-zinc-700 dark:text-zinc-300">R$ {{ payment.amount|floatformat:2 }}</span>
+                <span class="text-[10px] tracking-widest uppercase border border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 px-1.5 py-0.5 shrink-0">{{ payment.get_method_display }}</span>
+              </button>
 
-            <template x-teleport="body">
-              <div x-show="open" style="display:none"
-                   class="fixed inset-0 z-40 flex items-center justify-center p-4"
-                   @keydown.escape.window="open = false">
-                <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="open = false"></div>
-                <div x-trap.inert.noscroll="open"
-                     class="relative bg-[#f0f0f4] dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 w-full max-w-sm max-h-[90vh] overflow-y-auto">
+              <template x-teleport="body">
+                <div x-show="open" style="display:none"
+                     class="fixed inset-0 z-40 flex items-center justify-center p-4"
+                     @keydown.escape.window="open = false">
+                  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="open = false"></div>
+                  <div x-trap.inert.noscroll="open"
+                       class="relative bg-[#f0f0f4] dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 w-full max-w-sm max-h-[90vh] overflow-y-auto">
 
-                  <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-zinc-200 dark:border-zinc-800">
-                    <p class="text-[10px] tracking-[0.3em] uppercase text-zinc-400 dark:text-zinc-500">Pagamento</p>
-                    <button @click="open = false" class="text-xs text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">✕</button>
-                  </div>
-
-                  <div x-show="!editing" class="px-6 py-5">
-                    <p class="text-3xl tracking-tight text-zinc-900 dark:text-white mb-1">R$ {{ payment.amount|floatformat:2 }}</p>
-                    {% if payment.description %}
-                      <p class="text-sm tracking-wider text-zinc-500 dark:text-zinc-400 mb-3">{{ payment.description }}</p>
-                    {% else %}
-                      <div class="mb-3"></div>
-                    {% endif %}
-                    <div class="flex items-center gap-3 mb-6">
-                      <span class="text-xs text-zinc-400 dark:text-zinc-600">{{ payment.date }}</span>
-                      <span class="text-[10px] tracking-widest uppercase border border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 px-1.5 py-0.5">{{ payment.get_method_display }}</span>
+                    <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-zinc-200 dark:border-zinc-800">
+                      <p class="text-[10px] tracking-[0.3em] uppercase text-zinc-400 dark:text-zinc-500">Pagamento</p>
+                      <button @click="open = false" class="text-xs text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">✕</button>
                     </div>
-                    <div class="flex gap-3">
-                      <button @click="editing = true"
-                        class="border border-zinc-600 dark:border-zinc-400 px-5 py-2 text-xs tracking-widest uppercase text-zinc-700 dark:text-zinc-300 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
-                        Editar
-                      </button>
-                      <button @click="open = false; $store.modal.open('Excluir pagamento', 'Pagamento de R$ {{ payment.amount|floatformat:2 }} será removido permanentemente.', '{% url 'delete_payment' person.pk payment.pk %}')"
-                        class="border border-red-500 dark:border-red-400 px-5 py-2 text-xs tracking-widest uppercase text-red-500 dark:text-red-400 hover:border-red-400 hover:text-red-400 dark:hover:border-red-300 dark:hover:text-red-300 transition-colors cursor-pointer">
-                        Excluir
-                      </button>
-                    </div>
-                  </div>
 
-                  <form x-show="editing" x-cloak x-ref="editPaymentForm"
-                        method="post" action="{% url 'edit_payment' person.pk payment.pk %}"
-                        class="px-6 py-5 flex flex-col gap-3">
-                    {% csrf_token %}
-                    <div class="flex gap-3">
-                      <div>
-                        <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Valor</p>
-                        <input type="text" inputmode="decimal" name="amount" value="{{ payment.amount|floatformat:2 }}" required
-                          class="w-28 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-wider text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
+                    <div x-show="!editing" class="px-6 py-5">
+                      <p class="text-3xl tracking-tight text-zinc-900 dark:text-white mb-1">R$ {{ payment.amount|floatformat:2 }}</p>
+                      {% if payment.description %}
+                        <p class="text-sm tracking-wider text-zinc-500 dark:text-zinc-400 mb-3">{{ payment.description }}</p>
+                      {% else %}
+                        <div class="mb-3"></div>
+                      {% endif %}
+                      <div class="flex items-center gap-3 mb-6">
+                        <span class="text-xs text-zinc-400 dark:text-zinc-600">{{ payment.date }}</span>
+                        <span class="text-[10px] tracking-widest uppercase border border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 px-1.5 py-0.5">{{ payment.get_method_display }}</span>
                       </div>
-                      <div class="flex-1">
-                        <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Data</p>
-                        <input type="date" name="date" value="{{ payment.date|date:'Y-m-d' }}" required
-                          class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-wider text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
-                      </div>
-                    </div>
-                    <div>
-                      <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Descrição <span class="normal-case text-zinc-300 dark:text-zinc-700">(opcional)</span></p>
-                      <input type="text" name="description" value="{{ payment.description }}"
-                        placeholder="Ex: Parcela 1"
-                        class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-wider placeholder:text-zinc-300 dark:placeholder:text-zinc-700 text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
-                    </div>
-                    <div>
-                      <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Método</p>
-                      <div class="relative" @click.outside="methodOpen = false">
-                        <button type="button" @click="methodOpen = !methodOpen"
-                          class="w-full text-left flex justify-between items-center bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest focus:outline-none transition-colors"
-                          :class="method ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-400 dark:text-zinc-600'">
-                          <span x-text="methodLabel"></span>
-                          <span class="text-[10px] text-zinc-400 ml-2">▾</span>
-                        </button>
-                        <div x-show="methodOpen" x-cloak
-                          class="absolute z-10 left-0 right-0 top-full mt-px border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950">
-                          <template x-for="opt in methods" :key="opt.value">
-                            <button type="button"
-                              @click="method = opt.value; methodOpen = false;"
-                              x-text="opt.label"
-                              :class="method === opt.value ? 'text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-400'"
-                              class="w-full text-left px-3 py-2 text-xs tracking-widest hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
-                            </button>
-                          </template>
-                        </div>
-                        <input type="hidden" name="method" :value="method" />
-                      </div>
-                    </div>
-                    <div class="flex justify-between items-center pt-1">
                       <div class="flex gap-3">
-                        <button type="submit"
+                        <button @click="editing = true"
                           class="border border-zinc-600 dark:border-zinc-400 px-5 py-2 text-xs tracking-widest uppercase text-zinc-700 dark:text-zinc-300 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
-                          Salvar
+                          Editar
                         </button>
-                        <button type="button" @click="editing = false"
-                          class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors cursor-pointer">
-                          Cancelar
+                        <button @click="open = false; $store.modal.open('Excluir pagamento', 'Pagamento de R$ {{ payment.amount|floatformat:2 }} será removido permanentemente.', '{% url 'delete_payment' person.pk payment.pk %}')"
+                          class="border border-red-500 dark:border-red-400 px-5 py-2 text-xs tracking-widest uppercase text-red-500 dark:text-red-400 hover:border-red-400 hover:text-red-400 dark:hover:border-red-300 dark:hover:text-red-300 transition-colors cursor-pointer">
+                          Excluir
                         </button>
                       </div>
-                      <button type="button"
-                        @click="open = false; $store.modal.open('Excluir pagamento', 'Pagamento de R$ {{ payment.amount|floatformat:2 }} será removido permanentemente.', '{% url 'delete_payment' person.pk payment.pk %}')"
-                        class="text-xs tracking-widest uppercase text-red-500 dark:text-red-400 hover:text-red-400 dark:hover:text-red-300 transition-colors cursor-pointer">
-                        Excluir
-                      </button>
                     </div>
-                  </form>
+
+                    <form x-show="editing" x-cloak x-ref="editPaymentForm"
+                          method="post" action="{% url 'edit_payment' person.pk payment.pk %}"
+                          class="px-6 py-5 flex flex-col gap-3">
+                      {% csrf_token %}
+                      <div class="flex gap-3">
+                        <div>
+                          <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Valor</p>
+                          <input type="text" inputmode="decimal" name="amount" value="{{ payment.amount|floatformat:2 }}" required
+                            class="w-28 bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-wider text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
+                        </div>
+                        <div class="flex-1">
+                          <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Data</p>
+                          <input type="date" name="date" value="{{ payment.date|date:'Y-m-d' }}" required
+                            class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-wider text-zinc-500 dark:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
+                        </div>
+                      </div>
+                      <div>
+                        <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Descrição <span class="normal-case text-zinc-300 dark:text-zinc-700">(opcional)</span></p>
+                        <input type="text" name="description" value="{{ payment.description }}"
+                          placeholder="Ex: Parcela 1"
+                          class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-wider placeholder:text-zinc-300 dark:placeholder:text-zinc-700 text-zinc-900 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400" />
+                      </div>
+                      <div>
+                        <p class="text-[10px] tracking-widest uppercase text-zinc-400 mb-1">Método</p>
+                        <div class="relative" @click.outside="methodOpen = false">
+                          <button type="button" @click="methodOpen = !methodOpen"
+                            class="w-full text-left flex justify-between items-center bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-xs tracking-widest focus:outline-none transition-colors"
+                            :class="method ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-400 dark:text-zinc-600'">
+                            <span x-text="methodLabel"></span>
+                            <span class="text-[10px] text-zinc-400 ml-2">▾</span>
+                          </button>
+                          <div x-show="methodOpen" x-cloak
+                            class="absolute z-10 left-0 right-0 top-full mt-px border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950">
+                            <template x-for="opt in methods" :key="opt.value">
+                              <button type="button"
+                                @click="method = opt.value; methodOpen = false;"
+                                x-text="opt.label"
+                                :class="method === opt.value ? 'text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-400'"
+                                class="w-full text-left px-3 py-2 text-xs tracking-widest hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+                              </button>
+                            </template>
+                          </div>
+                          <input type="hidden" name="method" :value="method" />
+                        </div>
+                      </div>
+                      <div class="flex justify-between items-center pt-1">
+                        <div class="flex gap-3">
+                          <button type="submit"
+                            class="border border-zinc-600 dark:border-zinc-400 px-5 py-2 text-xs tracking-widest uppercase text-zinc-700 dark:text-zinc-300 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
+                            Salvar
+                          </button>
+                          <button type="button" @click="editing = false"
+                            class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors cursor-pointer">
+                            Cancelar
+                          </button>
+                        </div>
+                        <button type="button"
+                          @click="open = false; $store.modal.open('Excluir pagamento', 'Pagamento de R$ {{ payment.amount|floatformat:2 }} será removido permanentemente.', '{% url 'delete_payment' person.pk payment.pk %}')"
+                          class="text-xs tracking-widest uppercase text-red-500 dark:text-red-400 hover:text-red-400 dark:hover:text-red-300 transition-colors cursor-pointer">
+                          Excluir
+                        </button>
+                      </div>
+                    </form>
+                  </div>
                 </div>
-              </div>
-            </template>
+              </template>
+            </div>
           </li>
         {% endfor %}
       </ul>

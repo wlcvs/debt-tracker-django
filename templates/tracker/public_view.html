@@ -13,6 +13,8 @@
     debtAmountMin: '',
     debtAmountMax: '',
     showDebtFilters: false,
+    debtSortKey: 'date',
+    debtSortDir: 'desc',
 
     paymentSearch: '',
     paymentDateFrom: '',
@@ -20,6 +22,8 @@
     paymentAmountMin: '',
     paymentAmountMax: '',
     showPaymentFilters: false,
+    paymentSortKey: 'date',
+    paymentSortDir: 'desc',
 
     openDebt: null,
     openPayment: null,
@@ -73,6 +77,17 @@
       return true;
     },
 
+    sortList(selector, sortKey, sortDir) {
+      const items = [...this.$el.querySelectorAll(selector)];
+      const sorted = [...items].sort((a, b) => {
+        const av = sortKey === 'date' ? a.dataset.date : parseFloat(a.dataset.amount);
+        const bv = sortKey === 'date' ? b.dataset.date : parseFloat(b.dataset.amount);
+        const cmp = av < bv ? -1 : av > bv ? 1 : 0;
+        return sortDir === 'asc' ? cmp : -cmp;
+      });
+      sorted.forEach((el, i) => { el.style.order = i; });
+    },
+
     init() {
       this.$watch('showDebtFilters', v => {
         if (!v) { this.debtSearch = ''; this.debtDateFrom = ''; this.debtDateTo = ''; this.debtAmountMin = ''; this.debtAmountMax = ''; }
@@ -80,6 +95,10 @@
       this.$watch('showPaymentFilters', v => {
         if (!v) { this.paymentSearch = ''; this.paymentDateFrom = ''; this.paymentDateTo = ''; this.paymentAmountMin = ''; this.paymentAmountMax = ''; }
       });
+      this.$watch('debtSortKey', () => this.sortList('[data-debt-item]', this.debtSortKey, this.debtSortDir));
+      this.$watch('debtSortDir', () => this.sortList('[data-debt-item]', this.debtSortKey, this.debtSortDir));
+      this.$watch('paymentSortKey', () => this.sortList('[data-payment-item]', this.paymentSortKey, this.paymentSortDir));
+      this.$watch('paymentSortDir', () => this.sortList('[data-payment-item]', this.paymentSortKey, this.paymentSortDir));
     }
   }">
 
@@ -135,11 +154,26 @@
                 class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 text-xs placeholder:text-zinc-300 dark:placeholder:text-zinc-700 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
             </div>
           </div>
-          <button type="button"
-            @click="debtSearch = ''; debtDateFrom = ''; debtDateTo = ''; debtAmountMin = ''; debtAmountMax = '';"
-            class="self-start text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors">
-            Limpar
-          </button>
+          <div class="flex items-center gap-3 flex-wrap">
+            <p class="text-[10px] tracking-widest uppercase text-zinc-400">Ordenar</p>
+            <button type="button"
+              @click="if (debtSortKey === 'date') { debtSortDir = debtSortDir === 'asc' ? 'desc' : 'asc'; } else { debtSortKey = 'date'; debtSortDir = 'desc'; }"
+              class="text-[10px] tracking-widest uppercase transition-colors"
+              :class="debtSortKey === 'date' ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400'">
+              Data <span x-show="debtSortKey === 'date'" x-text="debtSortDir === 'asc' ? '↑' : '↓'"></span>
+            </button>
+            <button type="button"
+              @click="if (debtSortKey === 'amount') { debtSortDir = debtSortDir === 'asc' ? 'desc' : 'asc'; } else { debtSortKey = 'amount'; debtSortDir = 'desc'; }"
+              class="text-[10px] tracking-widest uppercase transition-colors"
+              :class="debtSortKey === 'amount' ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400'">
+              Valor <span x-show="debtSortKey === 'amount'" x-text="debtSortDir === 'asc' ? '↑' : '↓'"></span>
+            </button>
+            <button type="button"
+              @click="debtSearch = ''; debtDateFrom = ''; debtDateTo = ''; debtAmountMin = ''; debtAmountMax = ''; debtSortKey = 'date'; debtSortDir = 'desc';"
+              class="text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors ml-auto">
+              Limpar
+            </button>
+          </div>
           </div>
         </div>
 
@@ -149,6 +183,7 @@
           <ul class="flex flex-col">
             {% for debt in debts %}
               <li class="border-b border-zinc-200 dark:border-zinc-800 last:border-0"
+                data-debt-item data-date="{{ debt.date|date:'Y-m-d' }}" data-amount="{{ debt.amount|unlocalize }}"
                 x-show="matchDebt(
                   '{{ debt.title|escapejs }}',
                   '{{ debt.description|escapejs }}',
@@ -234,11 +269,26 @@
                 class="w-full bg-transparent border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 text-xs placeholder:text-zinc-300 dark:placeholder:text-zinc-700 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-colors" />
             </div>
           </div>
-          <button type="button"
-            @click="paymentSearch = ''; paymentDateFrom = ''; paymentDateTo = ''; paymentAmountMin = ''; paymentAmountMax = '';"
-            class="self-start text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors">
-            Limpar
-          </button>
+          <div class="flex items-center gap-3 flex-wrap">
+            <p class="text-[10px] tracking-widest uppercase text-zinc-400">Ordenar</p>
+            <button type="button"
+              @click="if (paymentSortKey === 'date') { paymentSortDir = paymentSortDir === 'asc' ? 'desc' : 'asc'; } else { paymentSortKey = 'date'; paymentSortDir = 'desc'; }"
+              class="text-[10px] tracking-widest uppercase transition-colors"
+              :class="paymentSortKey === 'date' ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400'">
+              Data <span x-show="paymentSortKey === 'date'" x-text="paymentSortDir === 'asc' ? '↑' : '↓'"></span>
+            </button>
+            <button type="button"
+              @click="if (paymentSortKey === 'amount') { paymentSortDir = paymentSortDir === 'asc' ? 'desc' : 'asc'; } else { paymentSortKey = 'amount'; paymentSortDir = 'desc'; }"
+              class="text-[10px] tracking-widest uppercase transition-colors"
+              :class="paymentSortKey === 'amount' ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400'">
+              Valor <span x-show="paymentSortKey === 'amount'" x-text="paymentSortDir === 'asc' ? '↑' : '↓'"></span>
+            </button>
+            <button type="button"
+              @click="paymentSearch = ''; paymentDateFrom = ''; paymentDateTo = ''; paymentAmountMin = ''; paymentAmountMax = ''; paymentSortKey = 'date'; paymentSortDir = 'desc';"
+              class="text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400 transition-colors ml-auto">
+              Limpar
+            </button>
+          </div>
           </div>
         </div>
 
@@ -248,6 +298,7 @@
           <ul class="flex flex-col">
             {% for payment in payments %}
               <li class="border-b border-zinc-200 dark:border-zinc-800 last:border-0"
+                data-payment-item data-date="{{ payment.date|date:'Y-m-d' }}" data-amount="{{ payment.amount|unlocalize }}"
                 x-show="matchPayment(
                   '{{ payment.description|escapejs }}',
                   '{{ payment.get_method_display|escapejs }}',

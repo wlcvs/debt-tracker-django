@@ -31,7 +31,7 @@
   {# ── Stats grid ── #}
   <section class="grid grid-cols-2 sm:grid-cols-3 gap-4">
     {% for label, value in stats.items %}
-      {% if label != "total_to_receive" %}
+      {% if label != "total_to_receive" and label != "total_debtors" %}
         <div class="border border-zinc-200 dark:border-zinc-800 px-5 py-4">
           <p class="text-xs tracking-[0.2em] uppercase text-zinc-400 dark:text-zinc-500 mb-2">
             {% if label == "active_debtors" %}Devedores ativos
