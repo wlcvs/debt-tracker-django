@@ -76,16 +76,13 @@ def dashboard(request):
         debt_count=Count("debts")
     ).order_by("label")
 
-    people_json = json.dumps(
-        [{"id": str(p.pk), "name": p.name} for p in people],
-        cls=DjangoJSONEncoder,
-    )
+    people_data = [{"id": str(p.pk), "name": p.name} for p in people]
 
     statements = Statement.objects.filter(user=request.user).defer("pdf_data")
 
     return render(request, "tracker/dashboard.html", {
         "people": people,
-        "people_json": people_json,
+        "people_data": people_data,
         "stats": stats,
         "credit_cards": credit_cards,
         "form": form,
@@ -316,6 +313,11 @@ def import_statement(request):
         llm_results = llm_data.get("transactions", [])
         extracted_text = llm_data.get("extracted_text", "")
 
+        if not extracted_text:
+            import pdfplumber
+            with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+                extracted_text = "\n\n".join(p.extract_text() or "" for p in pdf.pages).strip()
+
         Statement.objects.create(
             user=request.user,
             bank=bank,
@@ -413,6 +415,11 @@ def reopen_statement(request, stmt_id):
             llm_results = stmt.llm_results
             extracted_text = stmt.extracted_text
             llm_online = True
+
+        if not extracted_text:
+            import pdfplumber
+            with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+                extracted_text = "\n\n".join(p.extract_text() or "" for p in pdf.pages).strip()
 
         return JsonResponse({
             "bank": bank,

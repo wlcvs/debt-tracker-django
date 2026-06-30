@@ -210,7 +210,7 @@
 </div>
 
 {# ── Import modal ── #}
-{{ people_json|json_script:"import-modal-people" }}
+{{ people_data|json_script:"import-modal-people" }}
 <div x-data="importModal('{{ csrf_token }}')"
      @open-import.window="open = true; fromStatements = ($event.detail?.fromStatements ?? false)"
      @reopen-statement.window="reopenSaved($event.detail.url, $event.detail.pdfUrl)"
@@ -264,7 +264,21 @@
         <div x-show="step === 'review'" x-cloak class="relative flex-1 flex flex-col min-h-0">
 
           {# Toolbar #}
-          <div class="flex flex-wrap items-center gap-2 px-4 py-2.5 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
+          <div class="flex items-center gap-2 px-4 py-2.5 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
+            <button type="button" @click="showFilters = !showFilters"
+              class="text-[10px] tracking-widest uppercase border px-3 py-1.5 transition-colors whitespace-nowrap cursor-pointer"
+              :class="showFilters ? 'border-zinc-600 dark:border-zinc-400 text-zinc-700 dark:text-zinc-200' : 'border-zinc-300 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:border-zinc-600 dark:hover:border-zinc-400'">
+              Filtros
+            </button>
+            <button type="button" @click="openManualAdd()"
+              class="text-[10px] tracking-widest uppercase border border-zinc-400 dark:border-zinc-600 px-3 py-1.5 text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors whitespace-nowrap cursor-pointer">
+              + Adicionar manualmente
+            </button>
+          </div>
+
+          {# Filter panel #}
+          <div x-show="showFilters" x-cloak
+               class="flex flex-wrap items-center gap-2 px-4 py-2.5 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/40 shrink-0">
             <input type="search" x-model="search" placeholder="Descrição…"
               class="w-36 bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1.5 text-xs tracking-wider placeholder:text-zinc-400 dark:placeholder:text-zinc-600 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 transition-colors" />
             <input type="date" x-model="filterDateFrom" title="Data inicial"
@@ -275,9 +289,9 @@
               class="w-24 bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1.5 text-xs tracking-wider placeholder:text-zinc-400 dark:placeholder:text-zinc-600 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 transition-colors" />
             <input type="number" x-model="filterAmountMax" placeholder="R$ max" min="0" step="0.01"
               class="w-24 bg-transparent border border-zinc-300 dark:border-zinc-700 px-2 py-1.5 text-xs tracking-wider placeholder:text-zinc-400 dark:placeholder:text-zinc-600 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 transition-colors" />
-            <button type="button" @click="openManualAdd()"
-              class="text-[10px] tracking-widest uppercase border border-zinc-400 dark:border-zinc-600 px-3 py-1.5 text-zinc-500 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors whitespace-nowrap cursor-pointer">
-              + Adicionar manualmente
+            <button type="button" @click="search = ''; filterDateFrom = ''; filterDateTo = ''; filterAmountMin = ''; filterAmountMax = ''"
+              class="text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors cursor-pointer">
+              Limpar
             </button>
           </div>
 
@@ -514,6 +528,7 @@
       reopenUrl: '',
       isCached: false,
       fromStatements: false,
+      showFilters: false,
       sortKey: 'date',
       sortDir: 'asc',
       filterDateFrom: '',
@@ -585,6 +600,7 @@
         this.reopenUrl = '';
         this.isCached = false;
         this.fromStatements = false;
+        this.showFilters = false;
         this.step = 'upload';
         this.bank = '';
         this.algoTxns = [];
