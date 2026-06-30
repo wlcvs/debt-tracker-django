@@ -310,11 +310,7 @@ def import_statement(request):
             )
 
         llm_online = llm_client.health_check()
-        llm_results = []
-        if llm_online:
-            from .importers.base import extract_text_pages
-            pages = extract_text_pages(io.BytesIO(pdf_bytes))
-            llm_results = llm_client.extract(pages, bank)
+        llm_results = llm_client.extract(pdf_bytes, bank) if llm_online else []
 
         return JsonResponse({
             "bank": bank,
@@ -378,7 +374,6 @@ def reopen_statement(request, stmt_id):
     stmt = get_object_or_404(Statement, pk=stmt_id, user=request.user)
     try:
         from .importers import detect_and_parse
-        from .importers.base import extract_text_pages
         from . import llm_client
         import io
 
@@ -387,10 +382,7 @@ def reopen_statement(request, stmt_id):
         algo_results = [{"index": i, **t.to_dict()} for i, t in enumerate(txns)]
 
         llm_online = llm_client.health_check()
-        llm_results = []
-        if llm_online:
-            pages = extract_text_pages(io.BytesIO(pdf_bytes))
-            llm_results = llm_client.extract(pages, bank)
+        llm_results = llm_client.extract(pdf_bytes, bank) if llm_online else []
 
         return JsonResponse({
             "bank": bank,
