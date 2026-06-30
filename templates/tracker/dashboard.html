@@ -399,59 +399,23 @@
               </div>
             </div>
 
-            {# RIGHT: Viewer #}
+            {# RIGHT: PDF Viewer #}
             <div class="flex-1 flex flex-col min-h-0">
 
-              {# Viewer tabs #}
-              <div class="flex items-center border-b border-zinc-200 dark:border-zinc-800 shrink-0">
-                <button type="button" @click="viewerTab = 'pdf'"
-                  class="px-4 py-2.5 text-[10px] tracking-widest uppercase transition-colors border-b-2"
-                  :class="viewerTab === 'pdf' ? 'border-zinc-900 dark:border-white text-zinc-900 dark:text-white' : 'border-transparent text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400'">
-                  PDF
-                </button>
-                <button type="button" @click="viewerTab = 'text'"
-                  class="px-4 py-2.5 text-[10px] tracking-widest uppercase transition-colors border-b-2"
-                  :class="viewerTab === 'text' ? 'border-zinc-900 dark:border-white text-zinc-900 dark:text-white' : 'border-transparent text-zinc-400 dark:text-zinc-600 hover:text-zinc-700 dark:hover:text-zinc-400'">
-                  Texto extraído
-                </button>
-                <span class="flex-1"></span>
+              <div class="flex items-center justify-end px-3 py-2 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
                 <button x-show="reopenUrl" x-cloak type="button" @click="runFreshLLM()"
                   :disabled="step === 'processing'"
-                  class="mr-3 text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors cursor-pointer whitespace-nowrap">
+                  class="text-[10px] tracking-widest uppercase text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors cursor-pointer whitespace-nowrap">
                   <span x-show="step !== 'processing'">Nova análise</span>
                   <span x-show="step === 'processing'" x-cloak>Analisando…</span>
                 </button>
               </div>
 
-              {# PDF viewer #}
-              <div x-show="viewerTab === 'pdf'" class="flex-1 min-h-0 flex flex-col bg-zinc-200 dark:bg-zinc-800">
+              <div class="flex-1 min-h-0 flex flex-col bg-zinc-200 dark:bg-zinc-800">
                 <embed x-show="pdfUrl" x-cloak :src="pdfUrl"
                        type="application/pdf" class="flex-1 w-full border-0 min-h-0">
                 <div x-show="!pdfUrl" class="flex-1 flex items-center justify-center">
                   <p class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-600">PDF não disponível</p>
-                </div>
-              </div>
-
-              {# Text viewer #}
-              <div x-show="viewerTab === 'text'" x-cloak class="flex-1 flex flex-col min-h-0">
-                <div class="flex-1 overflow-auto" @mouseup="handleTextSelection()" x-ref="textPanel">
-                  <pre x-show="extractedText" x-cloak
-                       class="p-4 text-xs font-mono text-zinc-700 dark:text-zinc-200 whitespace-pre-wrap break-words leading-relaxed select-text"
-                       x-text="extractedText"></pre>
-                  <div x-show="!extractedText" class="flex flex-col items-center justify-center h-full gap-3 p-8 text-center">
-                    <p class="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-500">Texto extraído não disponível</p>
-                    <p class="text-[11px] text-zinc-400 dark:text-zinc-600 max-w-xs">Reinicie o servidor LLM e clique em <strong class="text-zinc-500 dark:text-zinc-400">Nova análise</strong> para gerar o texto.</p>
-                  </div>
-                </div>
-                <div x-show="selectedText" x-cloak
-                     class="shrink-0 flex items-center gap-3 px-4 py-2 border-t border-zinc-200 dark:border-zinc-800 bg-[#f0f0f4] dark:bg-zinc-900">
-                  <p class="flex-1 text-[10px] tracking-wider text-zinc-500 dark:text-zinc-400 truncate font-mono" x-text="selectedText"></p>
-                  <button type="button" @click="openAddFromSelection()"
-                    class="text-[10px] tracking-widest uppercase border border-zinc-400 dark:border-zinc-600 px-3 py-1.5 text-zinc-600 dark:text-zinc-400 hover:border-zinc-900 dark:hover:border-white hover:text-zinc-900 dark:hover:text-white transition-colors whitespace-nowrap cursor-pointer shrink-0">
-                    + Adicionar
-                  </button>
-                  <button type="button" @click="selectedText = ''; window.getSelection()?.removeAllRanges()"
-                    class="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors cursor-pointer text-sm shrink-0">✕</button>
                 </div>
               </div>
 
@@ -529,8 +493,6 @@
       viewerTab: 'pdf',
       search: '',
       error: '',
-      extractedText: '',
-      selectedText: '',
       showManualAdd: false,
       manualDate: '',
       manualDescription: '',
@@ -618,12 +580,8 @@
         this.algoTxns = [];
         this.llmTxns = [];
         this.llmAvailable = false;
-        this.activeTab = 'algorithm';
-        this.viewerTab = 'pdf';
         this.search = '';
         this.error = '';
-        this.extractedText = '';
-        this.selectedText = '';
         this.showManualAdd = false;
         this.manualDate = '';
         this.manualDescription = '';
@@ -644,10 +602,7 @@
         this.llmAvailable = data.llm_available ?? false;
         this.algoTxns = (data.algorithm || []).map((t, i) => ({ ...t, index: i, person_id: '', type: 'ignore' }));
         this.llmTxns = (data.llm || []).map((t, i) => ({ ...t, index: i, person_id: '', type: 'ignore' }));
-        this.extractedText = data.extracted_text || '';
         this.isCached = data.cached ?? false;
-        this.activeTab = 'algorithm';
-        this.viewerTab = this.pdfUrl ? 'pdf' : (this.extractedText ? 'text' : 'pdf');
         this.step = 'review';
       },
 
@@ -734,48 +689,10 @@
         }
       },
 
-      handleTextSelection() {
-        const sel = window.getSelection();
-        if (!sel || sel.isCollapsed) return;
-        const panel = this.$refs.textPanel;
-        if (!panel || !panel.contains(sel.anchorNode)) return;
-        const text = sel.toString().trim();
-        if (text) this.selectedText = text;
-      },
-
       openManualAdd() {
         this.manualDate = '';
         this.manualDescription = '';
         this.manualAmount = '';
-        this.showManualAdd = true;
-      },
-
-      openAddFromSelection() {
-        this.manualDate = '';
-        this.manualDescription = '';
-        this.manualAmount = '';
-
-        const text = this.selectedText;
-        const dateMatch = text.match(/(\d{4}-\d{2}-\d{2})/);
-        if (dateMatch) this.manualDate = dateMatch[1];
-
-        const amountMatch = text.match(/(\d{1,3}(?:\.\d{3})*,\d{2})|(\d+\.\d{2})/);
-        if (amountMatch) {
-          const raw = amountMatch[0];
-          if (raw.includes(',') && raw.includes('.')) {
-            this.manualAmount = raw.replace(/\./g, '').replace(',', '.');
-          } else if (raw.includes(',')) {
-            this.manualAmount = raw.replace(',', '.');
-          } else {
-            this.manualAmount = raw;
-          }
-        }
-
-        let desc = text;
-        if (dateMatch) desc = desc.replace(dateMatch[0], '');
-        if (amountMatch) desc = desc.replace(amountMatch[0], '');
-        this.manualDescription = desc.replace(/\s+/g, ' ').trim().substring(0, 255);
-
         this.showManualAdd = true;
       },
 
@@ -793,7 +710,6 @@
         };
 
         this.llmTxns.push(newTxn);
-        this.activeTab = 'llm';
 
         try {
           await fetch('{% url "save_llm_feedback" %}', {
@@ -805,7 +721,7 @@
                 date: this.manualDate,
                 description: this.manualDescription,
                 amount: this.manualAmount,
-                context: this.selectedText || '',
+                context: '',
               }]
             }),
           });
@@ -814,8 +730,6 @@
         }
 
         this.showManualAdd = false;
-        this.selectedText = '';
-        window.getSelection()?.removeAllRanges();
       },
     };
   }
