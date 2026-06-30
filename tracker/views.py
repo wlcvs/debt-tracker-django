@@ -300,17 +300,16 @@ def import_statement(request):
         bank, txns = detect_and_parse(pdf_file)
         algo_results = [{"index": i, **t.to_dict()} for i, t in enumerate(txns)]
 
-        if algo_results:
-            Statement.objects.create(
-                user=request.user,
-                bank=bank,
-                filename=pdf_file.name,
-                pdf_data=pdf_bytes,
-                transaction_count=len(algo_results),
-            )
-
         llm_online = llm_client.health_check()
         llm_results = llm_client.extract(pdf_bytes, bank) if llm_online else []
+
+        Statement.objects.create(
+            user=request.user,
+            bank=bank,
+            filename=pdf_file.name,
+            pdf_data=pdf_bytes,
+            transaction_count=max(len(algo_results), len(llm_results)),
+        )
 
         return JsonResponse({
             "bank": bank,
@@ -383,6 +382,11 @@ def reopen_statement(request, stmt_id):
 
         llm_online = llm_client.health_check()
         llm_results = llm_client.extract(pdf_bytes, bank) if llm_online else []
+
+        new_count = max(len(algo_results), len(llm_results))
+        if new_count != stmt.transaction_count:
+            stmt.transaction_count = new_count
+            stmt.save(update_fields=["transaction_count"])
 
         return JsonResponse({
             "bank": bank,
