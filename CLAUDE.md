@@ -46,10 +46,12 @@ pytest tracker/tests/ -q   # use explicit path to avoid conflict with tracker/te
 ```
 debt_tracker/         # Django config (settings, urls, wsgi)
 tracker/              # Main app
-  models.py           # Person, CreditCard, Debt, Payment
+  models.py           # Person, CreditCard, Debt, Payment, Statement, LLMFeedback
   views.py
   urls.py
   forms.py
+  llm_client.py       # HTTP client for external LLM extraction server
+  importers/          # bank statement parsers
   templates/tracker/
   tests/
 manage.py
@@ -73,8 +75,12 @@ docker-compose.yml
 /dashboard/person/<uuid>/payment/add/
 /dashboard/person/<uuid>/payment/<id>/edit|delete/
 /dashboard/credit-card/add|edit|delete/
-/dashboard/import/         → POST PDF → returns bank + transactions JSON
-/dashboard/import/save/    → POST selected items → creates Debt/Payment records
+/dashboard/import/                → POST PDF → returns bank + transactions JSON (algorithmic + LLM)
+/dashboard/import/save/           → POST selected items → creates Debt/Payment records
+/dashboard/import/feedback/       → POST corrections → creates LLMFeedback (few-shot examples)
+/dashboard/import/<id>/reopen/    → re-fetch a saved Statement (cached, or fresh=1 to re-run LLM)
+/dashboard/import/<id>/pdf/       → serve the stored PDF inline
+/dashboard/import/<id>/delete/    → delete a Statement
 ```
 
 ## Models
@@ -83,8 +89,10 @@ docker-compose.yml
 User       — Django built-in
 Person     — id (UUID, serves as access code), name, user FK
 CreditCard — label, user FK
-Debt       — amount (Decimal 10,2), title (required), description (optional), date, credit_card FK (nullable), method (PIX|CASH, optional), paid (bool, default False)
-Payment    — amount (Decimal 10,2), description (optional), date, method (PIX|CASH, required)
+Debt        — amount (Decimal 10,2), title (required), description (optional), date, credit_card FK (nullable), method (PIX|CASH, optional), paid (bool, default False)
+Payment     — amount (Decimal 10,2), description (optional), date, method (PIX|CASH, required)
+Statement   — cached PDF import: user FK, bank, filename, pdf_data (binary), algo_results/llm_results (JSON), extracted_text, transaction_count
+LLMFeedback — manually corrected transaction the LLM missed: user FK, bank, date, description, amount, context — reused as few-shot examples on future extracts
 ```
 
 ## Rules
@@ -125,10 +133,15 @@ Payment    — amount (Decimal 10,2), description (optional), date, method (PIX|
 
 ## Bank statement import
 
-PDF upload feature at `/dashboard/import/`. Logic lives in `tracker/importers/`:
-- `base.py` — `Transaction` dataclass, BR amount/date parsers, pdfplumber utils
-- `nubank.py`, `itau.py`, `mercadopago.py`, `bradesco.py` — bank-specific parsers (table-first, text fallback)
-- `__init__.py` — `detect_and_parse(pdf_file)` auto-detects bank from PDF content
+PDF upload feature at `/dashboard/import/`. Extraction runs two ways in parallel and both result sets are shown for review — nothing is auto-saved:
+
+- **Algorithmic parsers** in `tracker/importers/`:
+  - `base.py` — `Transaction` dataclass, BR amount/date parsers, pdfplumber utils
+  - `nubank.py`, `itau.py`, `mercadopago.py`, `bradesco.py` — bank-specific parsers (table-first, text fallback)
+  - `__init__.py` — `detect_and_parse(pdf_file)` auto-detects bank from PDF content
+- **External LLM extraction server** via `tracker/llm_client.py` — a separate service (not in this repo), configured with `LLM_BASE_URL` in `.env` (e.g. `http://localhost:8001` or an Ngrok URL). If unset or unreachable, LLM calls silently return empty results and the UI falls back to algorithmic-only results.
+
+Each upload is saved as a `Statement` (raw PDF bytes + cached `algo_results`/`llm_results`/`extracted_text`), so reopening a past import doesn't require re-parsing or re-hitting the LLM server (pass `?fresh=1` to force a re-run). Manually corrected transactions the LLM missed can be submitted as `LLMFeedback`, which is injected as few-shot examples (last 10, per bank) on future extracts for that bank.
 
 Store local PDFs in `extratos/` (gitignored for `*.pdf` / `*.PDF`). Parsers may need adjustment per actual PDF format — test by dropping a PDF in `extratos/` and hitting the upload UI.
 
